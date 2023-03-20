@@ -1,0 +1,29 @@
+---
+title: "Changins - Microbiome analysis"
+author: "Jan Waelchli"
+date: '`r Sys.Date()`'
+geometry: margin=2cm
+output:
+  pdf_document:
+    toc: yes
+    toc_depth: 1
+---
+
+```{r setup, include=FALSE}
+
+#This file is used to knitr all chapter together as one pdf!
+
+knitr::opts_chunk$set(echo = TRUE, fig.align="center")
+options(knitr.duplicate.label = "allow", tinytex.verbose = TRUE)
+
+## set source
+library(rstudioapi)
+setwd(dirname(getActiveDocumentContext()$path))
+
+```
+
+```{r, child=c('Microbiomes1_data_preparation_JW.Rmd', 'Microbiomes2_maize_harvest_JW.Rmd', 'Microbiomes3_wheat_sowing_JW.Rmd', 'Microbiomes4_wheat_growth_JW.Rmd')}
+
+#By knitting this script you receive one pdf out of all child Rmd-documents.
+
+```

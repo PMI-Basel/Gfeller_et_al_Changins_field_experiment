@@ -1,0 +1,656 @@
+---
+title: "Microbiome data import & normalization"
+author: "Jan Wälchli and Klaus Schlaeppi"
+output:
+  pdf_document:
+    toc: yes
+    toc_depth: 3
+---
+
+\pagebreak
+
+```{r setup, include=FALSE, echo=F, message=F, warning=F}
+
+#clear the objects from memory
+rm(list=ls())
+
+#knitr settings
+knitr::opts_chunk$set(echo=TRUE, fig.align="center")
+
+#set seed
+set.seed(100)
+
+#set source to file location
+if (!require(rstudioapi)){install.packages("rstudioapi")}; library(rstudioapi)
+setwd(dirname(getActiveDocumentContext()$path))
+
+```
+
+```{r paths, echo=F, message=F, warning=F}
+
+#set import paths
+paths <- list(DESIGN = c("../1_data/Rdesign.xlsx"),
+              bASV_table = c("../../4_output/bacteria_ASV/bacteria_ASV.tab"),
+              fASV_table = c("../../4_output/fungi_ASV/fungi_ASV.tab"),
+              btaxa = c("../../4_output/bacteria_ASV/bacteria_taxa.tab"),
+              ftaxa = c("../../4_output/fungi_ASV/fungi_taxa.tab"),
+              interim = c("../1_data/interim")
+              )
+
+```
+
+```{r libraries, echo=F, message=F, warning=F}
+
+## load functions
+source("functions/libraries.R")
+
+## installs (if necessary) and loads libraries
+libraries()
+
+#load PCA data of soil chemistry
+pca <- read.csv("../1_data/Exp_m18w19_PCA_soil_chem.csv")
+
+#remove no longer used functions
+rm(libraries)
+
+```
+
+```{r import design, echo=F, message=F, warning=F}
+
+#import design file
+DESIGN <- read_excel(paths$DESIGN)
+
+#set rownames
+rownames(DESIGN) <- DESIGN$Sample_ID
+
+#Sample_type with colors
+DESIGN$Sample_type <- factor(DESIGN$Sample_type, levels=c("root", "rhizosphere", "soil"))
+DESIGN$cols_Sample_type <- as.character(DESIGN$Sample_type)
+DESIGN$cols_Sample_type[DESIGN$Sample_type=="root"] <- "palegreen4"
+DESIGN$cols_Sample_type[DESIGN$Sample_type=="rhizosphere"] <- "indianred3"
+DESIGN$cols_Sample_type[DESIGN$Sample_type=="soil"] <- "chocolate4"
+
+#collapsed color vector for each level
+temp <- data.frame(DESIGN$Sample_type, DESIGN$cols_Sample_type)
+temp <- plyr::ddply(temp, .variables="DESIGN.cols_Sample_type", .fun=unique)
+level_cols_Sample_type <- as.character(temp[,2])
+names(level_cols_Sample_type) <- temp[,1]
+
+#Sample_type, Conditioning
+DESIGN$Sample_type_Conditioning <- factor(paste(DESIGN$Sample_type, DESIGN$Conditioning, sep="_"), 
+                                          levels=c("root_Bx+", "root_Bx-", "soil_Bx+", "soil_Bx-",
+                                                   "rhizosphere_Bx+", "rhizosphere_Bx-"))
+
+#Species
+DESIGN$Species <- factor(DESIGN$Species, levels = c("Maize", "Wheat", "bare_soil"))
+levels(DESIGN$Species) <- c("maize", "wheat", "bare-soil")
+
+## Sample_type, Species
+DESIGN$Sample_type_Species <- factor(paste(DESIGN$Sample_type, DESIGN$Species, sep="_"), 
+                                          levels=c("root_maize", "root_wheat","rhizosphere_maize" , "rhizosphere_wheat", "soil_maize", "soil_wheat", "soil_bare-soil"))
+
+DESIGN$cols_Sample_type_Species <- as.character(DESIGN$Sample_type_Species)
+DESIGN$cols_Sample_type_Species[DESIGN$cols_Sample_type_Species=="root_maize"] <- "seagreen2"
+DESIGN$cols_Sample_type_Species[DESIGN$cols_Sample_type_Species=="root_wheat"] <- "seagreen4"
+DESIGN$cols_Sample_type_Species[DESIGN$cols_Sample_type_Species=="rhizosphere_maize"] <- "deepskyblue"
+DESIGN$cols_Sample_type_Species[DESIGN$cols_Sample_type_Species=="rhizosphere_wheat"] <- "deepskyblue4"
+DESIGN$cols_Sample_type_Species[DESIGN$cols_Sample_type_Species=="soil_maize"] <- "tan1"
+DESIGN$cols_Sample_type_Species[DESIGN$cols_Sample_type_Species=="soil_wheat"] <- "tan3"
+DESIGN$cols_Sample_type_Species[DESIGN$cols_Sample_type_Species=="soil_bare-soil"] <- "tan4"
+
+## collapsed color vector for each level
+temp <- data.frame(DESIGN$Sample_type_Species, DESIGN$cols_Sample_type_Species)
+temp <- plyr::ddply(temp, .variables="DESIGN.cols_Sample_type_Species", .fun=unique)
+level_cols_Sample_type_Species <- as.character(temp[,2])
+names(level_cols_Sample_type_Species) <- temp[,1]
+
+#Genotype
+DESIGN$Genotype <- factor(DESIGN$Genotype, levels = c("W22", "bx1", "CH-Claro", "bare_soil"))
+levels(DESIGN$Genotype) <- c("W22", "bx1", "CH-claro", "bare-soil")
+
+#Conditioning with colors
+DESIGN$Conditioning <- factor(DESIGN$Conditioning, levels = c("Bx+", "Bx-"))
+DESIGN$cols_Conditioning <- as.character(DESIGN$Conditioning)
+DESIGN$cols_Conditioning[DESIGN$Conditioning=="Bx+"] <- "gold2"
+DESIGN$cols_Conditioning[DESIGN$Conditioning=="Bx-"] <- "darkgreen"
+
+#collapsed color vector for each level
+temp <- data.frame(DESIGN$Conditioning, DESIGN$cols_Conditioning)
+temp <- plyr::ddply(temp, .variables="DESIGN.cols_Conditioning", .fun=unique)
+level_cols_Conditioning <- as.character(temp[,2])
+names(level_cols_Conditioning) <- temp[,1]
+
+# Sample_type_Species_Conditioning
+DESIGN$Sample_type_Species_Conditioning <- factor(paste(DESIGN$Sample_type, DESIGN$Species, DESIGN$Conditioning, sep="_"))
+
+#run with colors
+DESIGN$run <- as.factor(DESIGN$run)
+DESIGN$cols_run <- as.character(DESIGN$run)
+DESIGN$cols_run[DESIGN$run=="BE03"] <- "wheat1"
+DESIGN$cols_run[DESIGN$run=="BE04"] <- "wheat3"
+
+## collapsed color vector for each level
+temp <- data.frame(DESIGN$run, DESIGN$cols_run)
+temp <- plyr::ddply(temp, .variables="DESIGN.cols_run", .fun=unique)
+level_cols_run <- as.character(temp[,2])
+names(level_cols_run) <- temp[,1]
+
+#add chem PCA 1 to design
+pca$plot_id <- gsub("bx", "Bx", pca$plot_id)
+rownames(pca) <- pca$plot_id 
+pca_chem <- pca[,c("PCA_soil_chem_1", "PCA_soil_chem_4","plot_id")]
+pca_for_design <- do.call("rbind", replicate(7, pca_chem, simplify = FALSE))
+DESIGN$Sample_name <- as.factor(DESIGN$Sample_name)
+DESIGN <- merge(pca_chem, DESIGN, by.y="Sample_name", by.x="plot_id")
+
+#remove no longer needed files
+rm(pca, pca_chem, pca_for_design)
+
+```
+
+```{r DAT import, echo=F, message=F, warning=F, include=F}
+
+#Bacteria
+
+#import ASV table
+all_bDAT <- read.delim(paths$bASV, header=T, row.names=1, sep="\t")
+all_bDAT <- t(all_bDAT)
+
+#rename ASVs to bASVs for bacterial-ASVs
+rownames(all_bDAT) <- gsub("ASV", "bASV", rownames(all_bDAT))
+
+#adapt sample names to design file
+colnames(all_bDAT) <- gsub("-","_", colnames(all_bDAT))
+colnames(all_bDAT) <- gsub("_r1_F_filt.fastq","", colnames(all_bDAT))
+colnames(all_bDAT) <- gsub("run","", colnames(all_bDAT))
+
+#add primer names to DESIGN
+DESIGN$bprimer <- ifelse(!is.na(DESIGN$BC_779F), paste(DESIGN$run_bac, DESIGN$BC_779F, DESIGN$run_bac, DESIGN$BC_1195R, sep="_"), NA)
+
+#create bacterial-DESIGN
+bDESIGN <- DESIGN [DESIGN$bprimer %in% colnames(all_bDAT), ]#keep only samples from bDAT
+bDAT <- all_bDAT[, bDESIGN$bprimer]#order bDAT as bDESIGN
+
+
+#Fungi
+
+#import ASV table
+all_fDAT <- read.delim(paths$fASV, header=T, row.names=1, sep="\t")
+all_fDAT <- t(all_fDAT)
+
+#rename ASV to bASVs for fungi OTUs
+rownames(all_fDAT) <- gsub("ASV", "fASV", rownames(all_fDAT))
+
+#adapt sample names to design file
+colnames(all_fDAT) <- gsub("-","_", colnames(all_fDAT))
+colnames(all_fDAT) <- gsub("_r1_F_filt.fastq","", colnames(all_fDAT))
+colnames(all_fDAT) <- gsub("run","", colnames(all_fDAT))
+
+#add primer names to DESIGN
+DESIGN$fprimer <- ifelse(!is.na(DESIGN$BC_ITS1F), paste(DESIGN$run_fun, DESIGN$BC_ITS1F, DESIGN$run_fun, DESIGN$BC_ITS2, sep="_"), NA)
+
+#create fungal-DESIGN
+fDESIGN <- DESIGN [DESIGN$fprimer %in% colnames(all_fDAT), ]#keep only samples from fDAT
+fDAT <- all_fDAT[, fDESIGN$fprimer]#order fDAT as fDESIGN
+
+#remove no longer needed files
+rm(all_bDAT, all_fDAT, DESIGN)
+
+```
+
+
+```{r bTAX import, echo=F, message=F, warning=F, include=F}
+
+#Bacteria
+
+#import taxonomy table
+bTAX <- read.table(paths$btaxa, row.names=1, sep="\t", blank.lines.skip = FALSE)
+
+#change cols to data type character
+for (i in 1:6) {bTAX[,i] <- as.character(bTAX[,i])}
+
+#rename bTAX
+colnames(bTAX) <- c("kingdom", "phylum", "class", "order", "family", "genus")
+
+#rename ASVs to bASVs for bacterial-ASVs
+rownames(bTAX) <- gsub(">ASV","bASV", rownames(bTAX))
+
+#remove non bacterial ASVs
+r1 <- -which(bTAX$kingdom=="Eukaryota")
+r2 <- -which(bTAX$phylum=="Cyanobacteria")
+r3 <- -which(bTAX$family=="Mitochondria")
+r4 <- -which(is.na(bTAX)) #rows all na
+ASVs_to_remove <- c(r1,r2,r3,r4)
+if(length(ASVs_to_remove)>0){bTAX <- bTAX[ASVs_to_remove ,]}
+rm(r1, r2, r3, r4, ASVs_to_remove)
+
+#rename unassigned ASVs
+bTAX[is.na(bTAX)] <- "unassigned"
+
+#add ASV_ID to taxonomy file
+bTAX$ASV_ID <- rownames(bTAX)
+
+#levels
+bTAX$phylum <- as.factor(bTAX$phylum)
+levels(bTAX$phylum)[levels(bTAX$phylum) < 2 ] <- "unassigned"
+
+#define ASV colors by phylum (using the taxonomy file)
+bTAX$labels <- as.character(bTAX$phylum)
+
+#create separate taxonomy label specifying classes of Proteobacteria
+bTAX$class <- as.factor(bTAX$class)
+try(bTAX[ bTAX$class=="Alphaproteobacteria", ]$labels <- "Alphaproteobacteria")
+try(bTAX[ bTAX$class=="Betaproteobacteria", ]$labels <- "Betaproteobacteria")
+try(bTAX[ bTAX$class=="Gammaproteobacteria", ]$labels <- "Gammaproteobacteria")
+try(bTAX[ bTAX$class=="Deltaproteobacteria", ]$labels <- "Deltaproteobacteria")
+
+bTAX$labels <- as.factor(bTAX$labels)
+
+```
+
+```{r fTAX import, warning=F, echo=F,  message=F, include=F}
+
+#Fungi
+
+#import taxonomy table
+fTAX <- read.table(paths$ftaxa, row.names=1, sep="\t", blank.lines.skip = FALSE)
+
+#rename fTAX
+colnames(fTAX) <- c("kingdom", "phylum", "class", "order", "family", "genus", "species")
+fTAX$kingdom <- gsub("k__","", fTAX$kingdom )
+fTAX$phylum <- gsub("p__","", fTAX$phylum )
+fTAX$class <- gsub("c__","", fTAX$class )
+fTAX$order <- gsub("o__","", fTAX$order )
+fTAX$family <- gsub("f__","", fTAX$family )
+fTAX$genus <- gsub("g__","", fTAX$genus )
+fTAX$species <- gsub("s__","", fTAX$species )
+
+#rename ASVs to fASVs for fungi ASVs
+rownames(fTAX) <- gsub(">ASV","fASV", rownames(fTAX))
+
+#remove non fungal ASVs
+r1 <- -which(fTAX$kingdom=="Protista")
+r2 <- -which(fTAX$kingdom=="Plantae")
+r3 <- -which(fTAX$kingdom=="Protozoa")
+r4 <- -which(fTAX$kingdom=="Animalia")
+r5 <- -which(is.na(fTAX)) #rows all na
+ASVs_to_remove <- c(r1,r2,r3,r4, r5)
+if(length(ASVs_to_remove)>0){fTAX <- fTAX[ASVs_to_remove ,]}
+rm(r1, r2, r3, r4, r5, ASVs_to_remove)
+
+#rename unassigned ASVs
+fTAX[is.na(fTAX)] <- "unassigned"
+
+#add ASV_ID to taxonomy file
+fTAX$ASV_ID <- rownames(fTAX)
+
+#levels
+fTAX$phylum <- as.factor(fTAX$phylum)
+levels(fTAX$phylum)[levels(fTAX$phylum) < 2 ] <- "unassigned"
+
+#define fASV colors by phylum (using the taxonomy file)
+fTAX$labels <- as.character(fTAX$phylum)
+fTAX$labels <- as.factor(fTAX$labels)
+levels(fTAX$labels)
+
+```
+
+\pagebreak
+
+# Data description
+
+## Sequencing depth
+
+```{r rarefaction threshold, echo=F, message=F, warning=F}
+
+#remove very shallow sequenced samples
+#In case we'd like to rarefy we define a rarefaction by the lowest seq depth
+
+#Bacteria
+b_rare <- sort(colSums(bDAT), decr=F)[5] #decide for threshold
+b_rare <- reshape::round_any(b_rare, accuracy = 10, f=floor) #floor to 10
+
+#remove samples with very low seq numbers
+bsamples_rm <- names(which(colSums(bDAT) < b_rare))
+bDESIGN <- bDESIGN[!(bDESIGN$bprimer %in% bsamples_rm),]
+bDAT <- bDAT[,!(colnames(bDAT) %in% bsamples_rm)]
+ASVs_rm <- names(which(rowSums(bDAT) == 0)) #rm ASVs with totSum=0
+bDAT <- bDAT[!(rownames(bDAT) %in% ASVs_rm),]
+bTAX <- bTAX[!(rownames(bTAX) %in% ASVs_rm),]
+
+#Fungi
+f_rare <- sort(colSums(fDAT), decr=F)[5] #decide for threshold
+f_rare <- reshape::round_any(f_rare, accuracy = 10, f=floor) #floor to 10
+
+#remove samples with very low seq numbers
+fsamples_rm <- names(which(colSums(fDAT) < f_rare))
+fDESIGN <- fDESIGN[!(fDESIGN$fprimer %in% fsamples_rm),]
+fDAT <- fDAT[,!(colnames(fDAT) %in% fsamples_rm)]
+ASVs_rm <- names(which(rowSums(fDAT) == 0)) #rm ASVs with totSum=0
+fDAT <- fDAT[!(rownames(fDAT) %in% ASVs_rm),]
+fTAX <- fTAX[!(rownames(fTAX) %in% ASVs_rm),]
+
+```
+
+We removed `r length(bsamples_rm)` bacterial samples with less than `r b_rare` sequences and `r length(fsamples_rm)` fungal samples with less than `r f_rare` sequences. We show the sum, range, median and total number of ASVs over all remaining samples. 
+
+```{r seq numbers bacteria, echo=F, message=F, warning=F}
+
+#create df to save sequences numbers
+nseqs <- data.frame(taxa=c("Bacteria","Fungi"))
+
+#Bacteria
+nseqs$sum[1] <- sum(colSums(bDAT))
+nseqs$min[1] <- min(colSums(bDAT))
+nseqs$max[1] <- max(colSums(bDAT))
+nseqs$median[1] <- median(colSums(bDAT))
+nseqs$ASVs[1] <- nrow(bDAT)
+
+#Fungi
+nseqs$sum[2] <- sum(colSums(fDAT))
+nseqs$min[2] <- min(colSums(fDAT))
+nseqs$max[2] <- max(colSums(fDAT))
+nseqs$median[2] <- median(colSums(fDAT))
+nseqs$ASVs[2] <- nrow(fDAT)
+
+#out
+pander(nseqs)
+
+#remove no longer used files
+rm(nseqs)
+
+```
+
+### Figure 1 | Sequencing depth
+
+```{r Boxplot sequences, fig.height=5, fig.width=11, echo=F, warning=F, message=F}
+
+## Bacteria
+df_bac <- data.frame(col_sum=colSums(bDAT, na.rm=T), 
+                     colnames=colnames(bDAT), 
+                     Genotype=bDESIGN$Sample_type_Species, 
+                     #Compartment=DESIGN$Sample_type,
+                     Conditioning=bDESIGN$Conditioning)
+ylim2=boxplot.stats(df_bac$col_sum)$stats[c(1, 5)]
+
+seq_nr_bac <- ggplot(data=df_bac, aes(x=Conditioning, y=col_sum, fill=Genotype)) + 
+  geom_boxplot(position=position_dodge2(width=0.75, preserve="single") ) + 
+  theme_bw() +
+  theme(legend.position="none") +
+  ylab("seq") +
+  scale_fill_manual(values=level_cols_Sample_type_Species) +
+  coord_cartesian(ylim=ylim2*1.05) +  
+  ggtitle("Bacteria: Sequencing depth")
+
+## Fungi
+df_fun <- data.frame(col_sum=colSums(fDAT, na.rm=T), 
+                     colnames=colnames(fDAT), 
+                     Genotype=fDESIGN$Sample_type_Species, 
+                     #Compartment=DESIGN$Sample_type,
+                     Conditioning=fDESIGN$Conditioning)
+
+ylim2=boxplot.stats(df_fun$col_sum)$stats[c(1, 5)]
+
+seq_nr_fun <- ggplot(data=df_fun, aes(x=Conditioning, y=col_sum, fill=Genotype)) + 
+  geom_boxplot(position=position_dodge2(width=0.75, preserve="single") ) + 
+  theme_bw() +
+  theme(legend.position="none") +
+  ylab("seq") +
+  scale_fill_manual(values=level_cols_Sample_type_Species) +
+  coord_cartesian(ylim=ylim2*1.05) +  
+  ggtitle("Fungi: Sequencing depth")
+
+```
+
+```{r Barplot sequences, fig.height=5, fig.width=11, echo=F, warning=F, message=F}
+
+## Bacteria
+df_bac$colSum <- colSums(bDAT)
+df_bac <- df_bac[order(df_bac$colSum, decreasing = T),]
+df_bac$x <- 1:nrow(df_bac)
+
+samples_bac <-  ggplot(df_bac, aes(x=x, y=colSum, fill=Genotype, color=Genotype))+
+                geom_bar(aes(width=1), size=0.1, stat = "identity", col="black")+
+                #scale_y_continuous(trans = 'log2')+
+                scale_fill_manual(values=level_cols_Sample_type_Species) +
+                scale_colour_manual(values = level_cols_Sample_type_Species) +
+                xlab("Samples")+
+                ylab("seq / sample")+
+                theme_bw() +
+                theme(axis.text.x=element_blank(), axis.ticks.x=element_blank(),
+                      strip.background = element_blank(), strip.text.x = element_blank()) #, legend.position = "none"
+
+## Fungi
+df_fun$colSum <- colSums(fDAT)
+df_fun <- df_fun[order(df_fun$colSum, decreasing = T),]
+df_fun$x <- 1:nrow(df_fun)
+
+samples_fun <-  ggplot(df_fun, aes(x=x, y=colSum, fill=Genotype, color=Genotype))+
+                geom_bar(aes(width=1), size=0.1, stat = "identity", col="black")+
+                #scale_y_continuous(trans = 'log2')+
+                scale_fill_manual(values=level_cols_Sample_type_Species) +
+                scale_colour_manual(values=level_cols_Sample_type_Species) +
+                xlab("Samples")+
+                ylab("seq / sample")+
+                theme_bw() +
+                theme(axis.text.x=element_blank(), axis.ticks.x=element_blank(),
+                      strip.background = element_blank(), strip.text.x = element_blank()) #, legend.position = "none"
+
+```
+
+```{r Figure 1, fig.height=8, fig.width=11, echo=F, warning=F, message=F}
+
+# library(cowplot)
+
+legend <- get_legend(samples_bac + theme(legend.position="bottom") + labs(fill="Genotype"))
+
+p <- plot_grid(seq_nr_bac + theme(legend.position="none"),
+                   seq_nr_fun + theme(legend.position="none"),
+                  samples_bac + theme(legend.position="none") + labs(colour=""),
+                  samples_fun + theme(legend.position="none") + labs(colour=""),
+                  labels=c("A","B"),
+                  align = "hv",
+                  rel_heights=c(1, .5),
+                  nrow=2)
+
+p <- plot_grid(p, legend, nrow=2, rel_heights=c(1, .1))
+print(p)
+
+```
+
+\pagebreak
+
+## Rarefaction curve
+
+We checked if the sequence depth is enough to capture the microbial diversity by plotting the rarefaction curve for each sample.
+
+### Figure 2 | Rarefaction curve
+
+```{r rarefaction, eval=T, echo=F, message=F, warning=F, fig.height=7, fig.width=14}
+
+#Bacteria
+
+#rarefy
+pdf("/dev/null") #prevents drawing of standard rarefaction plot (we will create our own with colors)
+brarefaction <- vegan::rarecurve(t(bDAT), step=50, 7000, label = FALSE)
+names(brarefaction) <- bDESIGN$Sample_ID
+invisible(dev.off())
+
+#long-transformation.
+protox <- mapply(FUN = function(x, y) {
+  mydf <- as.data.frame(x)
+  colnames(mydf) <- "value"
+  mydf$species <- y
+  mydf$subsample <- attr(x, "Subsample")
+  mydf
+}, x = brarefaction, y = as.list(names(brarefaction)), SIMPLIFY = FALSE)
+brarefaction_long <- do.call(rbind, protox)
+rownames(brarefaction_long) <- NULL  # pretty
+
+#add Sample_type_Species
+brarefaction_long$Sample_type_Species <- NA
+for (i in 1:nrow(brarefaction_long)) {
+  brarefaction_long$Sample_type_Species[i] <- as.character(bDESIGN$Sample_type_Species[bDESIGN$Sample_ID == brarefaction_long$species[i]])
+}
+
+#add Conditioning
+brarefaction_long$Conditioning <- NA
+for (i in 1:nrow(brarefaction_long)) {
+  brarefaction_long$Conditioning[i] <- as.character(bDESIGN$Conditioning[bDESIGN$Sample_ID == brarefaction_long$species[i]])
+}
+
+#plot
+brareplot <- ggplot(brarefaction_long, aes(x = subsample, y = value, group = species)) +
+                  theme_bw() +
+                  geom_line(aes(color=Sample_type_Species, lty=Conditioning))+
+                  scale_color_manual(values = level_cols_Sample_type_Species)+
+                  xlab("Sequencing Depth")+
+                  ylab("Number of ASVs")+
+                  ggtitle("Bacteria")
+
+
+#Fungi
+
+#rarefy
+pdf("/dev/null") #prevents drawing of standard rarefaction plot (we will create our own with colors)
+frarefaction <- vegan::rarecurve(t(fDAT), step=50, 7000, label = FALSE)
+names(frarefaction) <- fDESIGN$Sample_ID
+invisible(dev.off())
+
+# long-transformation.
+protox <- mapply(FUN = function(x, y) {
+  mydf <- as.data.frame(x)
+  colnames(mydf) <- "value"
+  mydf$species <- y
+  mydf$subsample <- attr(x, "Subsample")
+  mydf
+}, x = frarefaction, y = as.list(names(frarefaction)), SIMPLIFY = FALSE)
+frarefaction_long <- do.call(rbind, protox)
+rownames(frarefaction_long) <- NULL  # pretty
+
+#add Sample_type_Species
+frarefaction_long$Sample_type_Species <- NA
+for (i in 1:nrow(frarefaction_long)) {
+  frarefaction_long$Sample_type_Species[i] <- as.character(fDESIGN$Sample_type_Species[fDESIGN$Sample_ID == frarefaction_long$species[i]])
+}
+
+#add Conditioning
+frarefaction_long$Conditioning <- NA
+for (i in 1:nrow(frarefaction_long)) {
+  frarefaction_long$Conditioning[i] <- as.character(fDESIGN$Conditioning[fDESIGN$Sample_ID == frarefaction_long$species[i]])
+}
+
+#plot
+frareplot <- ggplot(frarefaction_long, aes(x = subsample, y = value, group = species)) +
+                  theme_bw() +
+                  geom_line(aes(color=Sample_type_Species, lty=Conditioning))+
+                  scale_color_manual(values = level_cols_Sample_type_Species)+
+                  xlab("Sequencing Depth")+
+                  ylab("Number of ASVs")+
+                  ggtitle("Fungi")
+
+
+#combine plots (package:cowplot)
+legend <- get_legend(brareplot + theme(legend.position="bottom") + labs(col="Sampletype-Species"))
+p <- plot_grid(brareplot + theme(legend.position="none"),
+               frareplot + theme(legend.position="none"),
+                  labels=c(" "," "), align = "hv", nrow=1)
+
+p <- plot_grid(p, legend, nrow=2, rel_heights=c(1, .1))
+print(p)
+
+```
+
+\pagebreak
+
+# Data normalization
+
+To decide on how to normalize the data we followed the recommendation of Weiss et al. (2017, Microbiome Journal) and we inspected whether there are differences in sequencing depths between the different sample groups utilizing the non-parametric Kruskal-Wallis Test. 
+
+## Asymptotic Kruskal-Wallis test
+
+We tested different sequencing depths for bacteria and fungi.
+
+```{r seq numbers per group fungi, echo=F, message=F, warning=F}
+
+## stats bac
+DAT_seq_krusk <- kruskal_test(colSums(bDAT) ~ bDESIGN$Sample_type_Species_Conditioning)  # library(coin)
+DAT_seq_krusk
+
+## stats fun
+DAT_seq_krusk <- kruskal_test(colSums(fDAT) ~ fDESIGN$Sample_type_Species_Conditioning)  # library(coin)
+DAT_seq_krusk
+
+```
+
+*Conclusion:* We found significant differences in sequencing depths between the different sample groups for bacteria and fungi. Therefore we rarefied the data for bacteria and fungi to equalize sequence differences! We defined the rarefaction threshold for bacteria to `r b_rare` sequences per sample and for fungi to `r f_rare` sequences.
+
+```{r DAT rare, warning=F, echo=F}
+
+#Bacteria
+#rarefaction (package vegan)
+bDAT_rare <- t(rrarefy(t(bDAT), b_rare))
+bDAT_rare <- bDAT_rare[rowSums(bDAT_rare) > 0,]  # removal of rows with 0 values
+
+#Fungi
+#rarefaction (package vegan)
+fDAT_rare <- t(rrarefy(t(fDAT), f_rare))
+fDAT_rare <- fDAT_rare[rowSums(fDAT_rare) > 0,]  # removal of rows with 0 values
+
+```
+
+\pagebreak
+
+# Final number of samples 
+
+We ended up with the following number of samples per treatment for the analysis.  
+
+```{r number of samples, warning=F, message=F, echo=F}
+
+#nsamples
+btable <- table(bDESIGN$Sample_type_Species_Conditioning)
+ftable <- table(fDESIGN$Sample_type_Species_Conditioning)
+
+#Concatenate
+sample_number <- data.frame(bac=btable, fun=ftable)
+if(all(sample_number$bac.Var1 == sample_number$fun.Var1)){
+  sample_number <- sample_number[c("bac.Var1","bac.Freq","fun.Freq")]
+  names(sample_number) <- c("Sample", "Bacteria", "Fungi")
+} else{"Check order"}
+
+#out
+pander(sample_number, caption = "Sample profile")
+
+
+```
+
+```{r export RDA files, echo=F, warning=F, message=F}
+
+#create directory
+dir.create(paths$interim)
+
+## set output directory
+setwd(paths$interim)
+
+#save objects needed in the following scripts as RDS
+saveRDS(bDESIGN, "bDESIGN.RDS")
+saveRDS(fDESIGN, "fDESIGN.RDS")
+
+saveRDS(bDAT, "bDAT.RDS")
+saveRDS(fDAT, "fDAT.RDS")
+saveRDS(b_rare, "b_rare.RDS")
+saveRDS(f_rare, "f_rare.RDS")
+saveRDS(bDAT_rare, "bDAT_rare.RDS")
+saveRDS(fDAT_rare, "fDAT_rare.RDS")
+
+saveRDS(bTAX, "bTAX.RDS")
+saveRDS(fTAX, "fTAX.RDS")
+
+saveRDS(level_cols_Sample_type, "level_cols_Sample_type.RDS")
+saveRDS(level_cols_Sample_type_Species, "level_cols_Sample_type_Species.RDS")
+saveRDS(level_cols_Conditioning, "level_cols_Conditioning.RDS")
+
+```
+
+\pagebreak
+
