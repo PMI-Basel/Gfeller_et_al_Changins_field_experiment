@@ -26,6 +26,6 @@ This is where the pipeline output is stored.
 
 This is the statistical analysis of the microbiome. The folder **2_scripts** contains all used scripts:
 
-**Analysis scripts:** The script Microbiomes1_data_preparation.Rmd imports microbiome data and normalize them. Microbiomes2_maize_harvest.Rmd analyses data after the conditioning phase, Microbiomes3_wheat_sowing.Rmd during sowing phase and Microbiomes4_wheat_growth.Rmd at the end of the wheat growth phase.\
+**Analysis scripts:** The script Microbiomes1_data_preparation.Rmd imports microbiome data and normalize them. Microbiomes2_maize_harvest.Rmd analyses data after the conditioning phase, Microbiomes3_wheat_sowing.Rmd during sowing phase and Microbiomes4_wheat_growth.Rmd at the end of the wheat growth phase.
 
 **Microbiomes0_wrapper.Rmd:** By knitting this script you receive one pdf out of all child Rmd-documents.
