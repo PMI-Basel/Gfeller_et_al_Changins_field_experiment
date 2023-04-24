@@ -1,0 +1,482 @@
+---
+title: "Wheat sowing"
+author: "Jan Wälchli, Selma Cadot and Klaus Schlaeppi"
+output:
+  pdf_document: 
+    toc: yes
+    toc_depth: 3
+---
+   
+```{r setup, include=FALSE, , echo=F}
+
+#clear the object from memory
+rm(list=ls())
+
+#knitr settings
+knitr::opts_chunk$set(echo = TRUE, fig.align = "center")
+
+#set seed
+set.seed(100)
+
+```
+
+```{r libraries, echo=F, message=F, warning=F}
+
+if (!require(rstudioapi)){install.packages("rstudioapi")}; library(rstudioapi)
+setwd(dirname(getActiveDocumentContext()$path))
+
+#paths
+paths <- list(interim = c("../1_data/interim"))
+
+#load functions
+source("functions/libraries.R")
+source("functions/variability_table.R")
+
+#installs (if necessary) and loads libraries
+libraries()
+
+#ggplot settings
+theme_set(theme_bw(base_size = 12))
+
+
+```
+
+```{r paths, echo=F, message=F, warning=F}
+
+## Import
+
+## set wd to RDS files
+setwd(paths$interim)
+
+#Import RDS files
+bDESIGN <- readRDS("bDESIGN.RDS")
+fDESIGN <- readRDS("fDESIGN.RDS")
+
+bDAT <- readRDS("bDAT.RDS")
+fDAT <- readRDS("fDAT.RDS")
+b_rare <- readRDS("b_rare.RDS")
+f_rare <- readRDS("f_rare.RDS")
+bDAT_rare <- readRDS("bDAT_rare.RDS")
+fDAT_rare <- readRDS("fDAT_rare.RDS")
+
+bTAX <- readRDS("bTAX.RDS")
+fTAX <- readRDS("fTAX.RDS")
+
+level_cols_Sample_type <- readRDS("level_cols_Sample_type.RDS")
+level_cols_Conditioning <- readRDS("level_cols_Conditioning.RDS")
+
+```
+
+
+```{r subsetting to BARE-SOIL, echo=F, warning=F, message=F, eval=T, }
+
+#Bacteria
+#subset DESIGN
+bDESIGN_sowing <- droplevels(bDESIGN[bDESIGN$Species=="bare-soil", ])
+rownames(bDESIGN_sowing) <- bDESIGN_sowing$bprimer
+
+#subset DATA_rare
+bDAT_rare_sowing <- bDAT_rare[ ,rownames(bDESIGN_sowing)]
+bDAT_rare_sowing <- bDAT_rare_sowing[rowSums(bDAT_rare_sowing) > 0,]  # removal of rows with 0 values
+
+##make PHYLOSEQ
+bPHYSEQ_rare_sowing <- phyloseq(sample_data(bDESIGN_sowing),
+                               otu_table(bDAT_rare_sowing, taxa_are_rows=T),
+                               tax_table(as.matrix(bTAX[rownames(bDAT_rare_sowing),])) )
+
+
+#Fungi
+#subset DESIGN
+fDESIGN_sowing <- droplevels(fDESIGN[fDESIGN$Species=="bare-soil", ])
+rownames(fDESIGN_sowing) <- fDESIGN_sowing$fprimer
+
+#subset DATA_rare
+fDAT_rare_sowing <- fDAT_rare[ ,rownames(fDESIGN_sowing)]
+fDAT_rare_sowing <- fDAT_rare_sowing[rowSums(fDAT_rare_sowing) > 0,]  # removal of rows with 0 values
+
+#make PHYLOSEQ
+fPHYSEQ_rare_sowing <- phyloseq(sample_data(fDESIGN_sowing),
+                               otu_table(fDAT_rare_sowing, taxa_are_rows=T),
+                               tax_table(as.matrix(fTAX[rownames(fDAT_rare_sowing),])) )
+```
+
+\pagebreak 
+
+# Data analysis - Wheat sowing 
+
+Here we analysed the microbiome data which has been collected during wheat sowing. All samples are bare-soil samples.
+
+# Soil chemistry PC1
+
+We know from previous analyses that we have a soil-chemical gradient (soil chemistry PC1) along the field. We tested if the microbiome changes along soil chemistry PC1. We tested this effect with a PERMANOVA and illustrated it with a PCoA.
+
+## PERMANOVA 
+
+*Model: ~ Conditioning + Soil Chemistry PC1*
+
+```{r bray curtis distances, warning=F, echo=F, eval=T}
+
+#Bacteria
+bDAT_rare_sowing_dist <- vegdist(t(bDAT_rare_sowing), method="bray")
+bDAT_rare_sowing_dist_paov <- adonis2(bDAT_rare_sowing_dist ~ Conditioning * PCA_soil_chem_1, data=bDESIGN_sowing, permutations=999)
+rownames(bDAT_rare_sowing_dist_paov)[2] <- "Soil chemistry PC1"
+rownames(bDAT_rare_sowing_dist_paov)[3] <- "Conditioning : Soil chemistry PC1"  
+pander(bDAT_rare_sowing_dist_paov[1:3,c(3,5)], caption="Bacteria")
+
+#Fungi
+fDAT_rare_sowing_dist <- vegdist(t(fDAT_rare_sowing), method="bray")
+fDAT_rare_sowing_dist_paov <- adonis2(fDAT_rare_sowing_dist ~ Conditioning * PCA_soil_chem_1, data=fDESIGN_sowing, permutations=999)
+rownames(fDAT_rare_sowing_dist_paov)[2] <- "Soil chemistry PC1"
+rownames(fDAT_rare_sowing_dist_paov)[3] <- "Conditioning : Soil chemistry PC1"  
+pander(fDAT_rare_sowing_dist_paov[1:3,c(3,5)], caption="Fungi")
+
+```
+
+\pagebreak
+
+## PCoA
+
+We performed an unconstrained ordination with Bray-Curtis distances.
+
+### Figure 8 | PCoA with Bray-Curtis
+
+```{r bacteria PCoA all samples, echo=F, warning=F, message=F, eval=T, fig.height=6, fig.width=11}
+
+# Bacteria
+#PCoA plot
+bPHYSEQ_rare_sowing_PCoA_bray <- phyloseq::ordinate(bPHYSEQ_rare_sowing, method="PCoA", distance="bray")
+p0 <- phyloseq::plot_ordination(bPHYSEQ_rare_sowing, bPHYSEQ_rare_sowing_PCoA_bray, shape="Conditioning", color="PCA_soil_chem_1", title = "Soil bacteria at wheat sowing (PCoA, Bray-Curtis)", axes = c(1,2))
+p0 <- p0 + geom_point(size=3)
+p0 <- p0 +  theme(legend.position = "top", legend.key.height = unit(.3, "cm"),
+                  legend.margin = margin(b =  0, unit='cm'),
+                  legend.box.margin = margin(b = -10, unit = "pt"))
+#p0 <- p0 + geom_text(label = bDESIGN_sowing$pos_long, size = 5, fontface="bold", colour="dimgrey") 
+Fig_3A_bac <- p0
+
+
+# Fungi
+#PCoA plot
+fPHYSEQ_rare_sowing_PCoA_bray <- phyloseq::ordinate(fPHYSEQ_rare_sowing, method="PCoA", distance="bray")
+p0 <- phyloseq::plot_ordination(fPHYSEQ_rare_sowing, fPHYSEQ_rare_sowing_PCoA_bray, shape="Conditioning", color="PCA_soil_chem_1", title = "Soil fungi at wheat sowing (PCoA, Bray-Curtis)", axes = c(1,2))
+p0 <- p0 + geom_point(size=3)
+p0 <- p0 +  theme(legend.position = "top", legend.key.height = unit(.3, "cm"),
+                  legend.margin = margin(b =  0, unit='cm'),
+                  legend.box.margin = margin(b = -10, unit = "pt"))
+#p0 <- p0 + geom_text(label = fDESIGN_sowing$pos_long, size = 5, fontface="bold", colour=fDESIGN_sowing$cols_Sample_type) 
+Fig_3A_fun <- p0
+
+#combine plots (package:cowplot)
+legend <- get_legend(Fig_3A_bac + theme(legend.position="bottom") + labs(col="Soil Chemistry PC1"))
+p <- plot_grid(Fig_3A_bac + theme(legend.position="none"),
+               Fig_3A_fun + theme(legend.position="none"),
+                  labels=c(" "," "), align = "hv", nrow=1)
+
+p <- plot_grid(p, legend, nrow=2, rel_heights=c(1, .1))
+print(p)
+
+```
+
+\pagebreak 
+
+## Correlation analysis: PCoA (microbiota) ~ Soil chemistry PC1
+
+Do soil chemistry PC1 correlate with the beta diversity? We tested for the first two axes.
+
+### Figure 9.1 | Bacteria: Correlation (microbiota) ~ Soil chemistry PC1
+
+```{r correlation bacteria, warning=F, echo=F, eval=T, message=F, fig.height=6, fig.width=11}
+
+#function to convert r to R2
+r_to_R2 <- function(r){paste0((r^2)*100,"%")}
+
+#function plot beta div - soil chem
+plot_cor <- function(df, cor, PCoA_axis, ylabel, pos_field, xlabel){
+  plot <- ggplot(df, aes(y=get(PCoA_axis), x=get(pos_field))) +
+            geom_jitter(width = 0.1, size=3, aes(shape=Sample_type)) + 
+            stat_smooth(method = "lm", se = FALSE, fullrange = TRUE, colour = "dimgrey", alpha = 3/4) +
+            theme_bw(base_size = 12) +
+            theme(legend.position="none") +
+            xlab(xlabel) +
+            ylab(ylabel) +
+            labs(title = paste("R2:", r_to_R2(round(cor$estimate,2)), "p:", formatC(cor$p.value, format = "g", digits = 2)))
+  return(plot)
+}
+
+#get PCoA dataframe
+bPHYSEQ_PCoA_bray_df <- phyloseq::plot_ordination(bPHYSEQ_rare_sowing, bPHYSEQ_rare_sowing_PCoA_bray, justDF = T)
+
+#correlation tests (PCoA ~ position)
+bPHYSEQ_PCoA_bray_df_A1_chem1 <- cor.test(bPHYSEQ_PCoA_bray_df$Axis.1, bPHYSEQ_PCoA_bray_df$PCA_soil_chem_1)
+bPHYSEQ_PCoA_bray_df_A2_chem1 <- cor.test(bPHYSEQ_PCoA_bray_df$Axis.2, bPHYSEQ_PCoA_bray_df$PCA_soil_chem_1)
+
+#make plots
+p1 <- plot_cor(bPHYSEQ_PCoA_bray_df, bPHYSEQ_PCoA_bray_df_A1_chem1, "Axis.1", "PCoA Axis 1", "PCA_soil_chem_1", "Soil chemistry PC1")
+p2 <- plot_cor(bPHYSEQ_PCoA_bray_df, bPHYSEQ_PCoA_bray_df_A2_chem1, "Axis.2", "PCoA Axis 2", "PCA_soil_chem_1", "Soil chemistry PC1")
+
+#combine plots
+legend <- get_legend(p1 + theme(legend.position="bottom") + labs(shape="Sampletype"))
+p <- plot_grid(p1 + theme(legend.position="none"),
+               p2 + theme(legend.position="none"),
+               labels=c(" "," "), align = "hv", nrow=1)
+
+bCORplot <- plot_grid(p, legend, nrow=2, rel_heights=c(1, .1))
+print(bCORplot)
+
+```
+
+### Figure 9.2 | Fungi: Correlation (microbiota) ~ Soil chemistry PC1
+
+```{r correlation Fungi, warning=F, echo=F, eval=T, message=F, fig.height=6, fig.width=11}
+
+#get PCoA dataframe
+fPHYSEQ_PCoA_bray_df <- phyloseq::plot_ordination(fPHYSEQ_rare_sowing, fPHYSEQ_rare_sowing_PCoA_bray, justDF = T)
+
+#correlation tests (PCoA ~ position)
+fPHYSEQ_PCoA_bray_df_A1_chem1 <- cor.test(fPHYSEQ_PCoA_bray_df$Axis.1, fPHYSEQ_PCoA_bray_df$PCA_soil_chem_1)
+fPHYSEQ_PCoA_bray_df_A2_chem1 <- cor.test(fPHYSEQ_PCoA_bray_df$Axis.2, fPHYSEQ_PCoA_bray_df$PCA_soil_chem_1)
+
+#make plots
+p1 <- plot_cor(fPHYSEQ_PCoA_bray_df, fPHYSEQ_PCoA_bray_df_A1_chem1, "Axis.1", "PCoA Axis 1", "PCA_soil_chem_1", "Soil chemistry PC1")
+p2 <- plot_cor(fPHYSEQ_PCoA_bray_df, fPHYSEQ_PCoA_bray_df_A2_chem1, "Axis.2", "PCoA Axis 2", "PCA_soil_chem_1", "Soil chemistry PC1")
+
+#combine plots
+legend <- get_legend(p1 + theme(legend.position="bottom") + labs(shape="Sampletype"))
+p <- plot_grid(p1 + theme(legend.position="none"),
+               p2 + theme(legend.position="none"),
+               labels=c(" "," "), align = "hv", nrow=1)
+
+fCORplot <- plot_grid(p, legend, nrow=2, rel_heights=c(1, .1))
+print(fCORplot)
+
+```
+
+**Conclusion:** The microbiome is influenced by soil chemistry PC1. To take soil chemistry PC1 into account, we included it as independent variable in all following models.
+
+\pagebreak
+
+# Analysis of BX conditioning effects - Alpha diversity
+
+How did BX conditioning affect the microbiome? We searched for differences between the conditioning treatments (WT, *bx1*). To measure the alpha diversity, we rarefied the data to the sequencing depth of `r b_rare` (bacteria) and `r f_rare` (fungi). Then we calculated Shannon diversity in each sample. This was repeated 100 times and the mean value from the 100 iterations was taken for statistical analysis between the different samples.  
+
+```{r a-div shannon, warning=F, echo=F, message=F, eval=T}
+
+#function to calculate Shannon
+get_shannon <- function(DAT, rare){
+  #get shannon diversity
+  diversity_all_DAT_mat <- c()
+  for (i in 1:100){
+    #generate rarefied community
+    temp_mat <- t(rrarefy(t(DAT), rare))
+    shannon <- vegan::diversity(temp_mat, index="shannon", MARGIN=2)
+    d <- exp(shannon)
+    diversity_all_DAT_mat <- cbind(diversity_all_DAT_mat, d)
+    }
+    return(diversity_all_DAT_mat)
+}
+
+#shannon div
+bDAT_temp <- bDAT[, rownames(bDESIGN_sowing)]
+bDAT_temp <- bDAT_temp[rowSums(bDAT_temp) > 0,]  # removal of rows with 0 values
+bALPHA_mat <- get_shannon(bDAT_temp, b_rare)
+rm(bDAT_temp)
+
+fDAT_temp <- fDAT[, rownames(fDESIGN_sowing)]
+fDAT_temp <- fDAT_temp[rowSums(fDAT_temp) > 0,]  # removal of rows with 0 values
+fALPHA_mat <- get_shannon(fDAT_temp, f_rare)
+rm(fDAT_temp)
+
+#Bacteria
+bALPHA_summary <- cbind(rowMeans(bALPHA_mat), bDESIGN_sowing)
+colnames(bALPHA_summary)[1] <- "ASV_diversity_all"
+
+#Fungi
+fALPHA_summary <- cbind(rowMeans(fALPHA_mat), fDESIGN_sowing)
+colnames(fALPHA_summary)[1] <- "ASV_diversity_all"
+
+#subseting data
+bALPHA_sowing <- bALPHA_summary[bALPHA_summary$Species == "bare-soil",]
+fALPHA_sowing <- fALPHA_summary[fALPHA_summary$Species == "bare-soil",]
+
+```
+
+## Anova statistics  
+
+
+*Model: ~ Conditioning \* Soil chemistry PC1*
+
+```{r a-div bacteria ANOVA, echo=F, message=F, warning=F}
+
+bALPHA_sowing_fit <- aov(ASV_diversity_all ~ Conditioning * PCA_soil_chem_1, data=bALPHA_sowing)
+bALPHA_sowing_fit_aov <- summary(bALPHA_sowing_fit)
+rownames(bALPHA_sowing_fit_aov[[1]])[2] <- "Soil chemistry PC1"
+rownames(bALPHA_sowing_fit_aov[[1]])[3] <- "Conditioning : Soil chemistry PC1"  
+pander(bALPHA_sowing_fit_aov, caption="Bacteria bare-soil")
+
+```
+
+```{r a-div fungi ANOVA, echo=F, message=F, warning=F}
+
+## Fungi
+fALPHA_sowing_fit <- aov(ASV_diversity_all ~  Conditioning * PCA_soil_chem_1, data=fALPHA_sowing)
+fALPHA_sowing_fit_aov <- summary(fALPHA_sowing_fit)
+rownames(fALPHA_sowing_fit_aov[[1]])[2] <- "Soil chemistry PC1"
+rownames(fALPHA_sowing_fit_aov[[1]])[3] <- "Conditioning : Soil chemistry PC1"  
+pander(fALPHA_sowing_fit_aov, caption="Fungi bare-soil")
+
+```
+
+\pagebreak
+
+### Figure 10 | Shannon diversity by conditioning
+
+```{r a-div maize plot, echo=F, message=F, warning=F, eval=T, fig.height=5, fig.width=10}
+
+#function plot a-div
+plotALPHA <- function(data, title="", label=""){
+  p <- ggplot(data, aes(y=ASV_diversity_all, x=Sample_type, fill=Conditioning, col=PCA_soil_chem_1 )) +
+        geom_boxplot(position=position_dodge2(width=0.75, preserve="single"), outlier.shape=NA, alpha=3/4) +
+        geom_jitter(aes(group=Sample_type_Conditioning), 
+                    size=2, position=position_jitterdodge(jitter.width=0.2, dodge.width=0.8))+
+        theme_bw() +
+        scale_fill_manual(labels = c(WT = "WT", bx1 = "bx1"), values=level_cols_Conditioning)+
+        ylab("Shanon Diversity") +
+        xlab("") +
+        labs(title=title) +
+        ylim(0, max(data$ASV_diversity_all*1.2)) +
+        stat_summary(geom='text', label=label, fun.y=max, vjust=-1, position=position_dodge(width = 0.75))+
+        theme(legend.position = "top", legend.key.height = unit(.3, "cm"),
+              legend.margin = margin(b =  0, unit='cm'),
+              legend.box.margin = margin(b = -10, unit = "pt"))
+
+  return(p)
+}
+
+#make plots
+bplot <- plotALPHA(bALPHA_sowing, "Bacteria: Alpha Diversity")
+fplot <- plotALPHA(fALPHA_sowing, "Fungi: Alpha Diversity")
+
+#combine plots
+legend <- get_legend(bplot + labs(color="Soil chemistry PC1", fill="Conditioning"))
+plot <- plot_grid(bplot + theme(legend.position="none"), 
+                  fplot + theme(legend.position="none"), 
+                  align = "hv", nrow=1)
+plot <- plot_grid(plot, legend, nrow=2, rel_heights=c(1, .2))
+print(plot)
+
+```
+
+
+**Conclusion:** soil chemistry PC1 did not influence the alpha diversity of the microbial communities in bare soil.
+
+\pagebreak
+
+# Analysis of BX conditioning effects - Beta diversity
+
+We measured the beta diversity using Bray-Curtis distances. We asked for conditioning effects by using PERMANOVA (function 'adonis2()' of the package vegan) and CAP ordination.
+
+## PERMANOVA
+
+*Model: ~ Conditioning \* Soil chemistry PC1*  
+
+```{r PERMANOVA bacteria conditioning, warning=F, echo=F, eval=T, message=F}
+
+#Bacteria
+bDAT_rare_sowing_dist_paov <- adonis2(bDAT_rare_sowing_dist ~ Conditioning * PCA_soil_chem_1, data=bDESIGN_sowing, permutations=999)
+rownames(bDAT_rare_sowing_dist_paov)[2] <- "Soil chemistry PC1"
+rownames(bDAT_rare_sowing_dist_paov)[3] <- "Conditioning : Soil chemistry PC1"  
+pander(bDAT_rare_sowing_dist_paov, caption="Bacteria: soil at sowing")
+
+```
+
+#### Fungi 
+
+```{r PERMANOVA Fungi conditioning, warning=F, echo=F, eval=T, message=F}
+
+# all sampletypes (with PCA components and not discrete field positions)
+fDAT_rare_sowing_dist_paov <- adonis2(fDAT_rare_sowing_dist ~ Conditioning * PCA_soil_chem_1, data=fDESIGN_sowing, permutations=999)
+rownames(fDAT_rare_sowing_dist_paov)[2] <- "Soil chemistry PC1"
+rownames(fDAT_rare_sowing_dist_paov)[3] <- "Conditioning : Soil chemistry PC1"  
+pander(fDAT_rare_sowing_dist_paov, caption="Fungi: soil at sowing")
+
+```
+
+\pagebreak 
+
+## CAP
+
+*Model: ~ Conditioning \* Soil chemistry PC1* 
+
+```{r CAPs, echo=F, warning=F, message=F, eval=T}
+
+#function plot CAP
+CAP_plot <- function(bPHY_object, CAP_object, title="", stats=""){
+  p0 <- phyloseq::plot_ordination(bPHY_object, CAP_object, color="Conditioning", axes = c(1,2), title = title)
+  p0$layers <- p0$layers[-1]
+  p0 <- p0 + geom_point(aes(size = PCA_soil_chem_1 ), stroke=1, alpha=3/4) 
+  p0 <- p0 + stat_ellipse(geom = "polygon", type="t", alpha=0.2, aes(fill=Conditioning))
+  p0 <- p0 + scale_fill_manual(values=level_cols_Conditioning)
+  p0 <- p0 + scale_color_manual(values=level_cols_Conditioning)
+  #p0 <- p0 + geom_text(label = bDESIGN_sowing_root$PCA_soil_chem_1, size = 3, vjust=2)
+  p0 <- p0 + theme_bw(base_size = 12)
+  p0 <- p0 + theme(legend.position="none")
+  p0 <- p0 + scale_x_reverse()
+  p0 <- p0 + labs(subtitle = stats)
+  return(p0)
+}
+
+#Bacteria
+bPHYSEQ_rare_sowing_CAP_bray <- phyloseq::ordinate(bPHYSEQ_rare_sowing, method="CAP", distance="bray",  
+                                                   formula= ~Conditioning * PCA_soil_chem_1 )
+#stats
+var_tbl <- variability_table(bPHYSEQ_rare_sowing_CAP_bray) # extract variation details
+CAP_anova <- anova.cca(bPHYSEQ_rare_sowing_CAP_bray, permutations=999) #Anova
+bPHYSEQ_rare_sowing_CAP_bray_stats <- paste("[", format(var_tbl["constrained", "proportion"] * 100, digits=2, nsmroot=1),
+                                           "% of variance, P = ",
+                                           format(CAP_anova[1, 4], digits=2), "]", sep = "")
+#plot
+bCAP_sowing <- CAP_plot(bPHYSEQ_rare_sowing, 
+                            bPHYSEQ_rare_sowing_CAP_bray, "Soil bacteria at wheat sowing", 
+                            bPHYSEQ_rare_sowing_CAP_bray_stats)
+
+
+#Fungi
+fPHYSEQ_rare_sowing_CAP_bray <- phyloseq::ordinate(fPHYSEQ_rare_sowing, method="CAP", distance="bray",  
+                                                  formula= ~Conditioning * PCA_soil_chem_1 )
+#stats
+var_tbl <- variability_table(fPHYSEQ_rare_sowing_CAP_bray) # extract variation details
+CAP_anova <- anova.cca(fPHYSEQ_rare_sowing_CAP_bray, permutations=999) #Anova
+fPHYSEQ_rare_sowing_CAP_bray_stats <- paste("[", format(var_tbl["constrained", "proportion"] * 100, digits=2, nsmroot=1),
+                                           "% of variance, P = ",
+                                           format(CAP_anova[1, 4], digits=2), "]", sep = "")
+#plot
+fCAP_sowing <- CAP_plot(fPHYSEQ_rare_sowing, 
+                            fPHYSEQ_rare_sowing_CAP_bray, "Soil fungi at wheat sowing", 
+                            fPHYSEQ_rare_sowing_CAP_bray_stats)
+
+
+#legend
+for_legend <- phyloseq::plot_ordination(bPHYSEQ_rare_sowing, bPHYSEQ_rare_sowing_CAP_bray, color="Conditioning", axes = c(1,2))
+   for_legend <- for_legend + geom_point(aes(size = PCA_soil_chem_1 ), stroke=1, alpha=3/4)
+   for_legend <- for_legend + scale_color_manual(values=level_cols_Conditioning)
+   
+```
+
+### Figure 11 | CAP
+
+```{r multiplot CAP, echo=F, warning=F, message=F, eval=T, fig.height=5, fig.width=8}
+
+#combine and plot
+CAP_sowing <- plot_grid(bCAP_sowing, fCAP_sowing,
+                                   align='vh', rel_widths=c(1,1,1,1,1,1),
+                                   labels=c("A","B"), hjust=-1, ncol=2 )
+
+legend <- get_legend(for_legend + theme(legend.position="bottom"))
+CAP_sowing2 <- plot_grid(CAP_sowing, legend, nrow=2, rel_heights = c(1, 0.2))
+
+print(CAP_sowing2)
+
+```
+
+**Conclusion:** soil chemistry PC1 affected bacterial but not fungal communities in bare-soil. No difference in beta diversity were found between communities from different conditioned soils.
+
+\pagebreak
