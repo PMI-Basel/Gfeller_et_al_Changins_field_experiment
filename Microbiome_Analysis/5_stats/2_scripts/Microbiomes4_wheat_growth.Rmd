@@ -164,7 +164,7 @@ pander(fDAT_rare_wheat_dist_paov[1:3,c(3,5)], caption="Fungi")
 
 We performed an unconstrained ordination with Bray-Curtis distances.
 
-### Figure 12 | PCoA with Bray-Curtis 
+### Figure 13 | PCoA with Bray-Curtis 
 
 ```{r bacteria PCoA all samples, echo=F, warning=F, message=F, eval=T, fig.height=6, fig.width=11}
 
@@ -207,7 +207,7 @@ print(p)
 
 Do soil chemistry PC1 correlate with the beta diversity? We tested for the first two axes.
 
-### Figure 13.1 | Bacteria: Correlation (microbiota) ~ Soil chemistry PC1
+### Figure 14.1 | Bacteria: Correlation (microbiota) ~ Soil chemistry PC1
 
 ```{r correlation bacteria, warning=F, echo=F, eval=T, message=F, fig.height=6, fig.width=11}
 
@@ -251,7 +251,7 @@ print(bCORplot)
 
 
 
-### Figure 13.2 | Fungi: Correlation (microbiota) ~ Soil chemistry PC1
+### Figure 14.2 | Fungi: Correlation (microbiota) ~ Soil chemistry PC1
 
 ```{r correlation fungi, warning=F, echo=F, eval=T, message=F, fig.height=6, fig.width=11}
 
@@ -407,7 +407,7 @@ pander(fALPHA_wheat_soil_fit_aov, caption="Fungi soil")
 
 \pagebreak
 
-### Figure 14 | Shannon diversity by sampletype and conditioning  
+### Figure 15 | Shannon diversity by sampletype and conditioning  
 
 ```{r a-div wheat plot, echo=F, message=F, warning=F, eval=T, fig.height=5, fig.width=10}
 
@@ -453,7 +453,7 @@ print(plot)
 
 Is there a correlation between the alpha diversity and soil chemistry PC1? We tested for each sampletype.
 
-### Figure 15.1 | Bacteria: Correlation alpha diversity ~ soil chemistry PC1
+### Figure 16.1 | Bacteria: Correlation alpha diversity ~ soil chemistry PC1
 
 ```{r a-div bacteria soil chemistry PC1 correlation test and plot, echo=F, message=F, warning=F, eval=T, fig.height=6, fig.width=18} 
 
@@ -487,7 +487,7 @@ plot
 
 ```
 
-### Figure 15.2 | Fungi: Correlation alpha diversity ~ soil chemistry PC1
+### Figure 16.2 | Fungi: Correlation alpha diversity ~ soil chemistry PC1
 
 ```{r a-div fungi soil chemistry PC1 correlation test, echo=F, message=F, warning=F, eval=T, fig.height=6, fig.width=18} 
 
@@ -723,7 +723,7 @@ for_legend <- for_legend + guides(color = guide_legend(order = 1),size = guide_l
    
 ```
 
-### Figure 16 | CAP of wheat (by sampletype) 
+### Figure 17 | CAP of wheat (by sampletype) 
 
 ```{r multiplot CAP, echo=F, warning=F, message=F, eval=T, fig.height=14, fig.width=18}
 

@@ -28,4 +28,6 @@ libraries <- function(){
   if (!require(readxl)){install.packages("readxl")}; library(readxl)
   if (!require(gtools)){install.packages("gtools")}; library(gtools)
   if (!require(tidyr)){install.packages("tidyr")}; library(tidyr)
+  if (!require(ggh4x)){install.packages("ggh4x")}; library(ggh4x)
+
   }

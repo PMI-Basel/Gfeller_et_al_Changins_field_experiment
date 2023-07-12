@@ -636,6 +636,228 @@ pander(sample_number, caption = "Sample profile")
 
 ```
 
+\pagebreak
+
+# Taxonomy Overview
+
+We get an overview for the abundance of bacterial and fungal taxonomies showing the most abundant phyla for each sample.
+
+```{r bac phyla, echo=F, warning=F, message=F,, fig.height=7, fig.width=10}
+
+#change order for melting later
+bTAX <- bTAX[,c("labels", "kingdom", "phylum", "class", "order", "family", "genus", "ASV_ID")]
+
+#add rownames needed for phyloseq objects
+rownames(bDESIGN) <- bDESIGN$bprimer
+
+#creat phyloseq object
+bPHYSEQ <- phyloseq(sample_data(bDESIGN),
+                    otu_table(bDAT_rare, taxa_are_rows=T),
+                    tax_table(as.matrix(bTAX[rownames(bDAT_rare),])) )
+
+#agglomerate data by labels 
+bPHYSEQ_phyla <- tax_glom(bPHYSEQ, "labels") # merge by 'labels' 
+bPHYSEQ_phyla <- transform_sample_counts(bPHYSEQ_phyla, function(x) 100 * x/sum(x)) 
+
+#melt phyloseq object
+bPHYSEQ_phyla_melt <- psmelt(bPHYSEQ_phyla) 
+
+#subset
+bPHYSEQ_phyla_melt <- bPHYSEQ_phyla_melt[,c("Sample", "Abundance", "Species", "Sample_type", "Conditioning", "Sample_ID","labels", "pos_long","pos_lat")]
+bPHYSEQ_phyla_melt$labels <- as.factor(bPHYSEQ_phyla_melt$labels)
+
+#defining high and low abundant phyla (low: MEAN abundances < 1%)
+bPHYSEQ_phyla_abu <-  rownames(otu_table(bPHYSEQ_phyla))[apply(otu_table(bPHYSEQ_phyla), 1, mean, na.rm=T) > 1]
+bPHYSEQ_phyla_abuP <- tax_table(bPHYSEQ_phyla)[rownames(tax_table(bPHYSEQ_phyla)) %in% bPHYSEQ_phyla_abu, "labels"]
+bPHYSEQ_phyla_low <-  rownames(otu_table(bPHYSEQ_phyla))[apply(otu_table(bPHYSEQ_phyla), 1, mean, na.rm=T) < 1]
+bPHYSEQ_phyla_lowP <- tax_table(bPHYSEQ_phyla)[rownames(tax_table(bPHYSEQ_phyla)) %in% bPHYSEQ_phyla_low, "labels"]
+
+#new label vector with low abundant
+bPHYSEQ_phyla_melt$labels_2 <- as.character(bPHYSEQ_phyla_melt$labels)
+bPHYSEQ_phyla_melt[bPHYSEQ_phyla_melt$labels_2 %in% bPHYSEQ_phyla_lowP, ]$labels_2 <- "Low abundant phyla"
+bPHYSEQ_phyla_melt$labels_2 <- as.factor(bPHYSEQ_phyla_melt$labels_2)
+bPHYSEQ_phyla_melt$labels_2 <- factor(bPHYSEQ_phyla_melt$labels_2)
+
+#defining plot colors
+bPHYSEQ_phyla_melt$cols[bPHYSEQ_phyla_melt$labels_2=="Actinobacteria"] <- "indianred2"
+bPHYSEQ_phyla_melt$cols[bPHYSEQ_phyla_melt$labels_2=="Alphaproteobacteria"] <- "palegreen1"
+bPHYSEQ_phyla_melt$cols[bPHYSEQ_phyla_melt$labels_2=="Gammaproteobacteria"] <- "palegreen4"
+bPHYSEQ_phyla_melt$cols[bPHYSEQ_phyla_melt$labels_2=="Bacteroidetes"] <- "steelblue1"
+bPHYSEQ_phyla_melt$cols[bPHYSEQ_phyla_melt$labels_2=="Chloroflexi"] <- "gold1"
+bPHYSEQ_phyla_melt$cols[bPHYSEQ_phyla_melt$labels_2=="Firmicutes"] <- "tan1"
+bPHYSEQ_phyla_melt$cols[bPHYSEQ_phyla_melt$labels_2=="Acidobacteria"] <- "lightsalmon4"
+bPHYSEQ_phyla_melt$cols[bPHYSEQ_phyla_melt$labels_2=="Deltaproteobacteria"] <- "olivedrab1"
+bPHYSEQ_phyla_melt$cols[bPHYSEQ_phyla_melt$labels_2=="Verrucomicrobia"] <- "orchid3"
+bPHYSEQ_phyla_melt$cols[bPHYSEQ_phyla_melt$labels_2=="Gemmatimonadetes"] <- "peachpuff3"
+bPHYSEQ_phyla_melt$cols[bPHYSEQ_phyla_melt$labels_2=="Low abundant phyla"] <- "lightgrey"
+
+#color matrix for plot
+bcol_class <- bPHYSEQ_phyla_melt$cols
+names(bcol_class) <- bPHYSEQ_phyla_melt$labels_2
+
+#define plotting factors
+bPHYSEQ_phyla_melt$samples <- paste(bPHYSEQ_phyla_melt$Genotype, bPHYSEQ_phyla_melt$Sample, sep="_")
+
+```
+
+```{r fun phyla, echo=F, warning=F, message=F,, fig.height=7, fig.width=10}
+
+#change order for melting later
+fTAX <- fTAX[,c("labels", "kingdom", "phylum", "class", "order", "family", "genus", "ASV_ID")]
+
+#add rownames needed for phyloseq objects
+rownames(fDESIGN) <- fDESIGN$fprimer
+
+#create phyloseq object
+fPHYSEQ <- phyloseq(sample_data(fDESIGN),
+                    otu_table(fDAT_rare, taxa_are_rows=T),
+                    tax_table(as.matrix(fTAX[rownames(fDAT_rare),])) )
+
+#agglomerate data by labels 
+fPHYSEQ_phyla <- tax_glom(fPHYSEQ, "labels") # merge by 'labels' 
+fPHYSEQ_phyla <- transform_sample_counts(fPHYSEQ_phyla, function(x) 100 * x/sum(x)) 
+
+#melt phyloseq object
+fPHYSEQ_phyla_melt <- psmelt(fPHYSEQ_phyla) 
+
+#subset
+fPHYSEQ_phyla_melt <- fPHYSEQ_phyla_melt[,c("Sample", "Abundance", "Species", "Sample_type", "Conditioning", "Sample_ID","labels", "pos_long","pos_lat")]
+fPHYSEQ_phyla_melt$labels <- as.factor(fPHYSEQ_phyla_melt$labels)
+fPHYSEQ_phyla_melt$cols <- as.character(fPHYSEQ_phyla_melt$labels)
+
+#defining high and low abundant phyla (low: MEAN abundances < 1%)
+fPHYSEQ_phyla_abu <-  rownames(otu_table(fPHYSEQ_phyla))[apply(otu_table(fPHYSEQ_phyla), 1, mean, na.rm=T) > 1]
+fPHYSEQ_phyla_abuP <- tax_table(fPHYSEQ_phyla)[rownames(tax_table(fPHYSEQ_phyla)) %in% fPHYSEQ_phyla_abu, "labels"]
+fPHYSEQ_phyla_low <-  rownames(otu_table(fPHYSEQ_phyla))[apply(otu_table(fPHYSEQ_phyla), 1, mean, na.rm=T) < 1]
+fPHYSEQ_phyla_lowP <- tax_table(fPHYSEQ_phyla)[rownames(tax_table(fPHYSEQ_phyla)) %in% fPHYSEQ_phyla_low, "labels"]
+
+#new label vector with low abundant
+fPHYSEQ_phyla_melt$labels_2 <- as.character(fPHYSEQ_phyla_melt$labels)
+fPHYSEQ_phyla_melt[fPHYSEQ_phyla_melt$labels_2 %in% fPHYSEQ_phyla_lowP, ]$labels_2 <- "Low abundant phyla"
+fPHYSEQ_phyla_melt$labels_2 <- as.factor(fPHYSEQ_phyla_melt$labels_2)
+fPHYSEQ_phyla_melt$labels_2 <- factor(fPHYSEQ_phyla_melt$labels_2)
+
+#defining plot colors
+fPHYSEQ_phyla_melt$cols[fPHYSEQ_phyla_melt$labels_2=="Ascomycota"] <- "skyblue3"
+fPHYSEQ_phyla_melt$cols[fPHYSEQ_phyla_melt$labels_2=="Basidiomycota"] <- "indianred2"
+fPHYSEQ_phyla_melt$cols[fPHYSEQ_phyla_melt$labels_2=="Glomeromycota"] <- "palegreen4"
+fPHYSEQ_phyla_melt$cols[fPHYSEQ_phyla_melt$labels_2=="Chytridiomycota"] <- "goldenrod2"
+fPHYSEQ_phyla_melt$cols[fPHYSEQ_phyla_melt$labels_2=="Mortierellomycota"] <- "lightpink3"
+fPHYSEQ_phyla_melt$cols[fPHYSEQ_phyla_melt$labels_2=="Low abundant phyla"] <- "lightgrey"
+fPHYSEQ_phyla_melt$cols[fPHYSEQ_phyla_melt$labels_2=="unassigned"] <- "dimgrey"
+
+#color matrix for plot
+fcol_class <- fPHYSEQ_phyla_melt$cols
+names(fcol_class) <- fPHYSEQ_phyla_melt$labels_2
+
+#define plotting factors
+fPHYSEQ_phyla_melt$samples <- paste(fPHYSEQ_phyla_melt$Genotype, fPHYSEQ_phyla_melt$Sample, sep="_")
+
+```
+
+### Figure 3.1 | Bacteria: Taxonomy overview
+
+```{r bac fig, echo=F, warning=F, message=F, fig.height=4, fig.width=15}
+
+#get removed samples for bac and fun
+bremoved_samples <- fPHYSEQ_phyla_melt[!(fPHYSEQ_phyla_melt$Sample_ID %in% bPHYSEQ_phyla_melt$Sample_ID),]
+bremoved_samples <- bremoved_samples[1:4,] #keep only one entry per sample
+bremoved_samples$Abundance <- 0 #change abu to 0
+
+fremoved_samples <- bPHYSEQ_phyla_melt[!(bPHYSEQ_phyla_melt$Sample_ID %in% fPHYSEQ_phyla_melt$Sample_ID),]
+fremoved_samples <- fremoved_samples[1:4,] #keep only one entry per sample
+fremoved_samples$Abundance <- 0 #change abu to 0
+
+#add removed sample ID to bPHYSEQ_phyla_melt with abu 0 (to add them to the plot)
+bPHYSEQ_phyla_melt <- rbind(bremoved_samples, bPHYSEQ_phyla_melt) #add to physeq
+
+#add timepoint
+bPHYSEQ_phyla_melt$timepoint <- NA
+bPHYSEQ_phyla_melt$timepoint[bPHYSEQ_phyla_melt$Species %in% "maize"] <- "Maize Harvest"
+bPHYSEQ_phyla_melt$timepoint[bPHYSEQ_phyla_melt$Species %in% "bare-soil"] <- "Wheat Sowing"
+bPHYSEQ_phyla_melt$timepoint[bPHYSEQ_phyla_melt$Species %in% "wheat"] <- "Wheat Harvest"
+bPHYSEQ_phyla_melt$timepoint <- factor(bPHYSEQ_phyla_melt$timepoint, levels=c("Maize Harvest","Wheat Sowing","Wheat Harvest"))
+
+#adapt sample_type labels
+bPHYSEQ_phyla_melt$Sample_type <- as.character(bPHYSEQ_phyla_melt$Sample_type)
+bPHYSEQ_phyla_melt$Sample_type <- bPHYSEQ_phyla_melt$Sample_type %>% gsub("root","Root",.) %>% gsub("rhizosphere", "Rhizosphere",.) %>% gsub("soil","Soil",.)
+bPHYSEQ_phyla_melt$Sample_type <- factor(bPHYSEQ_phyla_melt$Sample_type, levels=c("Soil","Rhizosphere","Root"))
+
+#sort by abu
+bPHYSEQ_phyla_melt <- bPHYSEQ_phyla_melt[order(bPHYSEQ_phyla_melt$Abundance, decreasing = T),]
+levels <- unique(bPHYSEQ_phyla_melt$Sample_ID)
+bPHYSEQ_phyla_melt$Sample_ID <- factor(bPHYSEQ_phyla_melt$Sample_ID, levels=levels)
+
+#change Phylum levels by abu
+bPHYSEQ_phyla_melt$labels_2 <- factor(bPHYSEQ_phyla_melt$labels_2, levels = unique(bPHYSEQ_phyla_melt$labels_2))
+
+#plot bacteria
+bTAX_phyla_plot <- ggplot(bPHYSEQ_phyla_melt, aes_string(x="Sample_ID", y="Abundance", fill="labels_2")) + 
+  geom_bar(stat="identity", alpha=0.9)+
+  xlab("") + 
+  ylab("Relative abundance [%]") +
+  scale_colour_manual(values=bcol_class)+
+  scale_fill_manual(values=bcol_class) +
+  guides(fill=guide_legend(title="Phylum"))+
+  ggh4x::facet_nested(. ~ timepoint + Sample_type + Conditioning, scale="free_x", nest_line = element_line())+
+  geom_segment(x=-Inf,xend=Inf,y=105,yend=105, lwd=1)+ #add lines under WT / bx1
+  geom_segment(x=-Inf,xend=Inf,y=100,yend=100,lwd=0.2, col="black")+ #box around grids
+  geom_segment(x=-Inf,xend=Inf,y=0,yend=0,lwd=0.2, col="black")+ #box around grids
+  theme_minimal()+
+  theme(axis.text.x=element_blank(), axis.ticks.x=element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+
+print(bTAX_phyla_plot)
+
+```
+
+### Figure 3.2 | Fungi: Taxonomy overview
+
+```{r fun fig, echo=F, warning=F, message=F, fig.height=4, fig.width=15}
+
+#add removed sample ID to bPHYSEQ_phyla_melt with abu 0 (to add them to the plot)
+fPHYSEQ_phyla_melt <- rbind(fremoved_samples, fPHYSEQ_phyla_melt) #add to physeq
+
+#add timepoint
+fPHYSEQ_phyla_melt$timepoint <- NA
+fPHYSEQ_phyla_melt$timepoint[fPHYSEQ_phyla_melt$Species %in% "maize"] <- "Maize Harvest"
+fPHYSEQ_phyla_melt$timepoint[fPHYSEQ_phyla_melt$Species %in% "bare-soil"] <- "Wheat Sowing"
+fPHYSEQ_phyla_melt$timepoint[fPHYSEQ_phyla_melt$Species %in% "wheat"] <- "Wheat Harvest"
+fPHYSEQ_phyla_melt$timepoint <- factor(fPHYSEQ_phyla_melt$timepoint, levels=c("Maize Harvest","Wheat Sowing","Wheat Harvest"))
+
+#adapt sample_type labels
+fPHYSEQ_phyla_melt$Sample_type <- as.character(fPHYSEQ_phyla_melt$Sample_type)
+fPHYSEQ_phyla_melt$Sample_type <- fPHYSEQ_phyla_melt$Sample_type %>% gsub("root","Root",.) %>% gsub("rhizosphere", "Rhizosphere",.) %>% gsub("soil","Soil",.)
+fPHYSEQ_phyla_melt$Sample_type <- factor(fPHYSEQ_phyla_melt$Sample_type, levels=c("Soil","Rhizosphere","Root"))
+
+#sort fungi by same sample_ID-order as bacteria
+fPHYSEQ_phyla_melt$Sample_ID <- factor(fPHYSEQ_phyla_melt$Sample_ID, levels=levels(bPHYSEQ_phyla_melt$Sample_ID))
+
+#change Phylum levels by abu
+fPHYSEQ_phyla_melt$labels_2 <- as.character(fPHYSEQ_phyla_melt$labels_2)
+fPHYSEQ_phyla_melt$labels_2[fPHYSEQ_phyla_melt$labels_2=="unassigned"] <- "Unassigned"
+fPHYSEQ_phyla_melt$labels_2 <- factor(fPHYSEQ_phyla_melt$labels_2, levels = c("Ascomycota","Chytridiomycota","Basidiomycota","Mortierellomycota","Unassigned","Low abundant phyla"))
+names(fcol_class)[names(fcol_class)=="unassigned"] <- "Unassigned" #change name for unassigned in col string
+
+#plot bacteria
+fTAX_phyla_plot <- ggplot(fPHYSEQ_phyla_melt, aes_string(x="Sample_ID", y="Abundance", fill="labels_2")) + 
+  geom_bar(stat="identity", alpha=0.9)+
+  xlab("") + 
+  ylab("Relative abundance [%]") +
+  scale_colour_manual(values=fcol_class)+
+  scale_fill_manual(values=fcol_class) +
+  guides(fill=guide_legend(title="Phylum"))+
+  ggh4x::facet_nested(. ~ timepoint + Sample_type + Conditioning, scale="free_x", nest_line = element_line())+
+  geom_segment(x=-Inf,xend=Inf,y=105,yend=105,lwd=1)+ #add lines under WT / bx1
+  geom_segment(x=-Inf,xend=Inf,y=100,yend=100,lwd=0.2, col="black")+ #box around grids
+  geom_segment(x=-Inf,xend=Inf,y=0,yend=0,lwd=0.2, col="black")+ #box around grids
+  theme_minimal()+
+  theme(axis.text.x=element_blank(), axis.ticks.x=element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+
+print(fTAX_phyla_plot)
+
+```
+
+
 ```{r export RDA files, echo=F, warning=F, message=F}
 # Export
 

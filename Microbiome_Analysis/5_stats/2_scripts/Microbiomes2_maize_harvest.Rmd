@@ -163,7 +163,7 @@ pander(fDAT_rare_maize_dist_paov[1:3,c(3,5)], caption="Fungi")
 
 We performed an unconstrained ordination with Bray-Curtis distances.
 
-### Figure 3 | PCoA with Bray-Curtis 
+### Figure 4 | PCoA with Bray-Curtis 
 
 ```{r bacteria PCoA all samples, echo=F, warning=F, message=F, eval=T, fig.height=6, fig.width=11}
 
@@ -206,7 +206,7 @@ print(p)
 
 Do soil chemistry PC1 correlate with the beta diversity? We tested for the first two axes.
 
-### Figure 4.1 | Bacteria: Correlation (microbiota) ~ Soil chemistry PC1
+### Figure 5.1 | Bacteria: Correlation (microbiota) ~ Soil chemistry PC1
 
 ```{r correlation bacteria, warning=F, echo=F, eval=T, message=F, fig.height=6, fig.width=11}
 
@@ -248,7 +248,7 @@ print(bCORplot)
 
 ```
 
-### Figure 4.2 | Fungi: Correlation (microbiota) ~ Soil chemistry PC1
+### Figure 5.2 | Fungi: Correlation (microbiota) ~ Soil chemistry PC1
 
 ```{r correlation fungi, warning=F, echo=F, eval=T, message=F, fig.height=6, fig.width=11}
 
@@ -404,7 +404,7 @@ pander(fALPHA_maize_soil_fit_aov, caption="Fungi soil")
 
 \pagebreak
 
-### Figure 5 | Shannon diversity by sampletype and genotype  
+### Figure 6 | Shannon diversity by sampletype and genotype  
 
 ```{r a-div maize plot, echo=F, message=F, warning=F, eval=T, fig.height=5, fig.width=10}
 
@@ -454,7 +454,7 @@ print(plot)
 
 Is there a correlation between the alpha diversity and soil chemistry PC1? We tested for each sampletype.
 
-### Figure 6.1 | Bacteria: Correlation alpha diversity ~ soil chemistry PC1
+### Figure 7.1 | Bacteria: Correlation alpha diversity ~ soil chemistry PC1
 
 ```{r a-div bacteria soil chemistry PC1 correlation test and plot, echo=F, message=F, warning=F, eval=T, fig.height=6, fig.width=18} 
 
@@ -487,7 +487,7 @@ plot
 
 ```
 
-### Figure 6.2 | Fungi: Correlation alpha diversity ~ soil chemistry PC1 
+### Figure 7.2 | Fungi: Correlation alpha diversity ~ soil chemistry PC1 
 
 ```{r a-div fungi soil chemistry PC1 correlation test, echo=F, message=F, warning=F, eval=T, fig.height=6, fig.width=18} 
 
@@ -720,7 +720,7 @@ for_legend <- for_legend + guides(color = guide_legend(order = 1),size = guide_l
    
 ```
 
-### Figure 7 | CAP of maize (by sampletype) 
+### Figure 8 | CAP of maize (by sampletype) 
 
 ```{r multiplot CAP, echo=F, warning=F, message=F, eval=T, fig.height=14, fig.width=18}
 
