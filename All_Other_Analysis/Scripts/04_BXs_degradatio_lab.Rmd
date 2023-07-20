@@ -1,0 +1,287 @@
+---
+title: "Experiment BX-feedback M18W19 <br> Effect of soil origin on benzoxazinoid degradation"
+author: "Valentin Gfeller"
+date: "`r Sys.Date()`"
+output: 
+  html_document: 
+    toc: true
+    toc_float: true
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+#global knitter option
+knitr::opts_chunk$set(
+	echo = FALSE,
+	fig.align = "center",
+	warning = FALSE,
+	dev = "svglite"
+)
+
+# load packages
+library(tidyverse); packageVersion("tidyverse")
+library(ggbeeswarm); packageVersion("ggbeeswarm")
+library(viridis); packageVersion("viridis")
+library(car); packageVersion("car")
+library(emmeans); packageVersion("emmeans")
+library(here); packageVersion("here")
+library(knitr); packageVersion("knitr")
+library(ggpubr); packageVersion("ggpubr")
+library(ggtext); packageVersion("ggtext")
+library(cowplot); packageVersion("cowplot")
+
+# source handy functions
+source(here("Functions", "fun_vg.R"))
+
+# set global option for ggplot2
+theme_set(theme_bw(base_size = 11))
+
+```
+
+
+```{r include=FALSE}
+# Import
+d.degr_maize_long <- read.delim(
+  here("Data", "06_BX_degradation_lab", "Exp_m18w19_degr_bx.csv"),
+  sep = ",", header = TRUE)
+
+str(d.degr_maize_long)
+
+# convert to long format
+d.degr_maize_long <- d.degr_maize_long  %>% 
+  mutate(Compound_name = factor(Compound_name, levels = c("DIMBOA_d3", "MBOA_d3", 
+                                                          "AMPO_d3")),
+         condition = factor(condition, levels = c("N_DIMBOA", "S_DIMBOA",
+                                                  "buffer_DIMBOA", "buffer_control")))
+
+```
+
+# #Fig.S10
+```{r warning=FALSE, fig.width=10, fig.height=5}
+d.degr_maize_long  %>% 
+  mutate(time_point = as.factor(time_point))%>% 
+   ggplot(aes(time_point, uM, color = condition)) +
+   geom_point(aes(color = "black", fill = condition), 
+              alpha = 0.9, shape = 21, stroke = 1) +
+   stat_summary(aes(group = soil_origin), fun = mean, geom = "line",
+               size = 1, alpha = 0.3) +
+   facet_grid(rows = vars(Compound_name), scales = "free") +
+   scale_color_manual(name = "Treatment",
+                      labels = c(buffer_control = "Buffer control",
+                                 buffer_DIMBOA = "DIMBOA in buffer",
+                                 N_DIMBOA  = "DIMBOA in N soil",
+                                 S_DIMBOA = "DIMBOA in S soil"),
+                      values = c(buffer_control = "#E7298A",
+                                buffer_DIMBOA = "#7570B3",
+                                N_DIMBOA  = "#1B9E77",
+                                S_DIMBOA = "#D95F02")) +
+   scale_fill_manual(name = "Treatment",
+                     labels = c(buffer_control = "Buffer control",
+                                buffer_DIMBOA = "DIMBOA in buffer",
+                                N_DIMBOA  = "DIMBOA in N soil",
+                                S_DIMBOA = "DIMBOA in S soil"),
+                     values = c(buffer_control = "#E7298A",
+                                buffer_DIMBOA = "#7570B3",
+                                N_DIMBOA  = "#1B9E77",
+                                S_DIMBOA = "#D95F02")) +
+   scale_x_discrete(name = "DIMBOA-d3 incubation time", 
+                    labels = c("1" = "1 min", "2" = "7.5 min",
+                               "3" = "15 min", "5" = "1 h", "6" = "4 h",
+                               "8" = "1 day", "10" = " 4 days")) +
+   scale_y_continuous(name = expression("Concentration"~(mu*mol/L)), 
+                      expand = expansion(mult = c(0.125, 0.125)))
+
+lab_comp <- c(DIMBOA_d3 = "DIMBOA-d3", MBOA_d3 = "MBOA-d3", AMPO_d3 = "AMPO-d3")
+
+# Without buffer control
+d.degr_maize_long  %>% 
+  filter(condition != "buffer_control") %>% 
+  mutate(time_point = as.factor(time_point))%>% 
+   ggplot(aes(time_point, uM, color = condition)) +
+   geom_point(aes(color = "black", fill = condition), 
+              alpha = 0.9, shape = 21, stroke = 1) +
+   stat_summary(aes(group = soil_origin), fun = mean, geom = "line",
+               size = 1, alpha = 0.3) +
+   facet_grid(rows = vars(Compound_name), scales = "free",
+              labeller = labeller(Compound_name = lab_comp)) +
+   scale_color_manual(name = "DIMBOA-d3 in:",
+                      labels = c(buffer_DIMBOA = "Buffer",
+                                 N_DIMBOA  = "North soil",
+                                 S_DIMBOA = "South soil"),
+                      values = c(buffer_DIMBOA = "#7570B3",
+                                 N_DIMBOA  = "#1B9E77",
+                                 S_DIMBOA = "#D95F02")) +
+  scale_fill_manual(name = "DIMBOA-d3 in:",
+                     labels = c(buffer_DIMBOA = "Buffer",
+                                N_DIMBOA  = "North soil",
+                                S_DIMBOA = "South soil"),
+                    values = c(buffer_DIMBOA = "#7570B3",
+                               N_DIMBOA  = "#1B9E77",
+                               S_DIMBOA = "#D95F02")) +
+  scale_x_discrete(name = "DIMBOA-d3 incubation time", 
+                    labels = c("1" = "1 min", "2" = "7.5 min",
+                               "3" = "15 min", "5" = "1 h", "6" = "4 h",
+                               "8" = "1 day", "10" = " 4 days")) +
+   scale_y_continuous(name = expression("Concentration"~(mu*mol/L)), 
+                      expand = expansion(mult = c(0.125, 0.125)))
+
+ggsave(here("Figures", "individual_figures", "Fig.S10.svg"), 
+       width = 5.5, height =  5)
+```
+
+
+# #Fig.5D
+```{r warning=FALSE, fig.width=6, fig.height=6}
+# Stats
+# test for differences between soil origin by Wilcoxon Rank Sum test and correct for multiple testing
+
+## DIMBOA
+d.dimboa <-  d.degr_maize_long %>%
+  filter(!condition %in% c("buffer_control", "buffer_DIMBOA"),
+         Compound_name == "DIMBOA_d3") %>% 
+  mutate(time_point = as.factor(time_point))
+
+p_values_dimboa <- d.dimboa %>% 
+  mutate(uM = case_when(
+    is.na(uM) ~ 0,
+    TRUE      ~ uM))%>%
+  group_by(time_point) %>% 
+  nest() %>% 
+  mutate( fit = map(data, ~ t.test(uM ~ soil_origin, data = ., exact = FALSE)),
+          results = map(fit, broom::glance)) %>% 
+  unnest(results)%>% 
+  select(1, 8)%>%
+  ungroup() %>% 
+  mutate(
+    n      = length(.$p.value),
+    p.ad   = p.adjust(p.value, method = "fdr"),
+    p.ad_c = case_when(
+      p.ad < 0.001 ~ as.character("p < 0.001"),
+      is.na(p.ad)  ~ "",
+      TRUE  ~ paste0("p = ", sprintf("%.2f", p.ad))),
+    x      = 1.5,
+    y      = 7.5,
+    Compound_name = "DIMBOA_d3",
+    soil_origin = NA)
+
+p_values_dimboa
+
+
+## MBOA
+d.mboa <-  d.degr_maize_long %>%
+  filter(!condition %in% c("buffer_control", "buffer_DIMBOA"),
+         Compound_name == "MBOA_d3") %>% 
+  mutate(time_point = as.factor(time_point))
+
+p_values_mboa <- d.mboa %>% 
+  mutate(uM = case_when(
+    is.na(uM) ~ 0,
+    TRUE      ~ uM))%>%
+  group_by(time_point) %>% 
+  nest() %>% 
+  mutate( fit = map(data, ~ t.test(uM ~ soil_origin, data = ., exact = FALSE)),
+          results = map(fit, broom::glance)) %>% 
+  unnest(results)%>% 
+  select(1, 8)%>%
+  ungroup() %>% 
+  mutate(
+    n      = length(.$p.value),
+    p.ad   = p.adjust(p.value, method = "fdr"),
+    p.ad_c = case_when(
+      p.value < 0.001 ~ as.character("p < 0.001"),
+      TRUE  ~ paste0("p = ", sprintf("%.2f", p.ad))),
+    x      = 1.5,
+    y      = 25,
+    Compound_name = "MBOA_d3",
+    soil_origin = NA)
+
+p_values_mboa
+
+
+
+## AMPO
+d.ampo <-  d.degr_maize_long %>%
+  filter(!condition %in% c("buffer_control", "buffer_DIMBOA"),
+         Compound_name == "AMPO_d3") %>% 
+  mutate(time_point = as.factor(time_point))
+
+p_values_ampo <- d.ampo %>% 
+  mutate(uM = case_when(
+    is.na(uM) ~ 0,
+    TRUE      ~ uM))%>%
+  group_by(time_point) %>% 
+  nest() %>% 
+  mutate( fit = map(data, ~ t.test(uM ~ soil_origin, data = ., exact = FALSE)),
+          results = map(fit, broom::glance)) %>% 
+  unnest(results)%>% 
+  select(1, 8)%>%
+  ungroup() %>% 
+  mutate(
+    n      = length(.$p.value),
+    p.ad   = p.adjust(p.value, method = "fdr"),
+    p.ad_c = case_when(
+      p.value < 0.001 ~ as.character("p < 0.001"),
+      TRUE  ~ paste0("p = ", sprintf("%.2f", p.ad))),
+    x      = 1.5,
+    y      = 0.478,
+    Compound_name = "AMPO_d3",
+    soil_origin = NA)
+
+p_values_ampo
+
+
+p_values <- bind_rows(p_values_dimboa, p_values_mboa, p_values_ampo) %>% 
+  mutate(Compound_name = factor(Compound_name, 
+                                levels = c("DIMBOA_d3", "MBOA_d3", "AMPO_d3")))
+
+```
+
+```{r warning=FALSE, fig.width=6, fig.height=6}
+d.degr_maize_long_red <- d.degr_maize_long  %>% 
+  filter(condition %in% c("S_DIMBOA",  "N_DIMBOA"))
+
+lab_comp <- c(DIMBOA_d3 = "DIMBOA-d3", MBOA_d3 = "MBOA-d3", AMPO_d3 = "AMPO-d3")
+
+## discrete time
+d.degr_maize_long_red %>% 
+      mutate(time_point = as.factor(time_point))%>% 
+  ggplot(aes(time_point, uM, color = soil_origin)) +
+#   geom_text(aes(label = replicate)) +   
+   geom_point(aes(color = "black", fill = soil_origin), 
+              alpha = 0.9, shape = 21, stroke = 1) +
+   scale_fill_manual(name = "Soil origin", 
+                      values = c(N  = "#1B9E77", S = "#D95F02"),
+                     labels = c(N  = "North", S = "South")) +
+   stat_summary(aes(group = soil_origin), fun = mean, geom = "line",
+                size = 1, alpha = 0.3) +
+   facet_grid(rows = vars(Compound_name), scales = "free",
+              labeller = labeller(Compound_name = lab_comp)) +
+   scale_color_manual(name = "Soil origin", 
+                      values = c(N  = "#1B9E77", S = "#D95F02"),
+                      labels = c(N  = "North", S = "South")) +
+   scale_x_discrete(name = "DIMBOA-d3 incubation time", 
+                    labels = c("1" = "1 min", "2" = "7.5 min", "3" = "15 min",
+                               "5" = "1 h", "6" = "4 h",
+                               "8" = "1 day" ,"10" = " 4 days")) +
+   scale_y_continuous(name = expression("Concentration"~(mu*mol/L)), 
+                      expand = expansion(mult = c(0.125, 0.125))) +
+  geom_text(data = p_values, 
+            aes(y = y, group = 0.5,
+                label = p.ad_c),
+            size = 3.3,
+            color = "black") +
+  theme(legend.position = "top")
+
+
+ggsave(here("Figures", "individual_figures", "Fig.5D.svg"), 
+       width = 4.68, height =  4.194)
+
+```
+
+
+# Version control
+```{r}
+sessionInfo()
+```
+

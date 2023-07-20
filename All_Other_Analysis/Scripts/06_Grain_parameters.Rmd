@@ -1,0 +1,1100 @@
+---
+title: "Experiment BX-feedback M18W19  <br> Grain parameters"
+author: "Valentin Gfeller"
+date: "`r Sys.Date()`"
+output: 
+  html_document: 
+    toc: true
+    toc_float: true
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+#global knitter option
+knitr::opts_chunk$set(
+	echo = FALSE,
+	fig.align = "center",
+	warning = FALSE,
+	dev = "svglite"
+)
+
+# load packages
+library(tidyverse); packageVersion("tidyverse")
+library(ggbeeswarm); packageVersion("ggbeeswarm")
+library(viridis); packageVersion("viridis")
+library(car); packageVersion("car")
+library(emmeans); packageVersion("emmeans")
+library(here); packageVersion("here")
+library(knitr); packageVersion("knitr")
+library(ggpubr); packageVersion("ggpubr")
+library(ggtext); packageVersion("ggtext")
+library(cowplot); packageVersion("cowplot")
+
+# source handy functions
+source(here("Functions", "fun_vg.R"))
+source(here("Functions", "fun_vg_more.R"))
+
+# set global option for ggplot2
+theme_set(theme_bw(base_size = 11))
+
+```
+
+```{r include=FALSE}
+# Load soil parameter and BX PCA 
+d.soil_chem <- read.csv(here("Data", "01_Soil", "Exp_m18w19_PCA_soil_chem.csv"), 
+                        sep = ",", header = T) %>% 
+  select(length, width, starts_with("PCA"))
+
+str(d.soil_chem)
+```
+
+
+
+# Grain paramter Agroscope
+```{r include=FALSE}
+#Import data
+d.gr_par <- read_delim(file = here("Data", "04_Grain_parameters", 
+                                   "Exp_m18w19_grain_analysis_agroscope_changins.csv"),
+                       delim = ",", col_names = TRUE)
+
+# append PCA of soil analysis
+d.gr_par <- left_join(d.gr_par, d.soil_chem, by =c("length", "width")) %>% 
+  mutate(trt = factor(trt, levels = c("W", "b")))
+
+# check data
+head(d.gr_par)
+str(d.gr_par)
+summary(d.gr_par)
+```
+
+
+```{r include=FALSE}
+# Make data frame longer
+d.gr_par %>% colnames() %>% tibble(x = .) %>% print(n = Inf)
+
+d.gr_par_l <- d.gr_par %>% 
+  pivot_longer(cols = c(5:15)) %>% 
+  select(1:4, name, value, everything()) %>% 
+  mutate()
+
+d.gr_par_l %>% str()
+```
+
+## Grain width
+```{r}
+# lm
+m.grain <-  lm(grain_width ~ trt * PCA_soil_chem_1, d.gr_par)
+plot.mod.vg(m.grain)
+
+# Tidy anova output
+lab.grain <- Anova(m.grain) %>% output_anova_phen()
+
+# Plot conditioning
+p.cond <- plot_box_wheat_feed(my_dat = d.gr_par, var_measured = grain_width,
+                    y_lab = expression(paste("Grain width (mm)")),
+                    tab_anova = lab.grain)+
+  scale_y_continuous(expand = expansion(mult = c(0.1, 0.16)))
+
+# Plot soil chemistry
+p.soil <- plot_pc1_reg(my_dat = d.gr_par, 
+             var_measured = grain_width,
+             y_lab = expression(paste("Grain width (mm)")))+
+  scale_y_continuous(expand = expansion(mult = c(0.1, 0.2)))
+
+# Plot local feedback Local feedback
+d.new_LLR <- surrounding_lrr(variable = grain_width, data = d.gr_par)
+LRR <- d.new_LLR %>% select(contains("lrr")) %>% names() %>% sym()
+p.psf <- ggplot_lrr(data = d.new_LLR) + 
+  impr_graph_lrr(data = d.new_LLR) +
+  ylab("Local feedback on grain width") +
+  scale_y_continuous(expand = expansion(mult = c(0.1, 0.2)))
+
+```
+
+combine plots
+```{r, fig.width=7, fig.height=5}
+p.grain_width <- plot_comb(p.cond + theme(axis.title.x = element_blank()), 
+          p.psf + theme(axis.title.x = element_blank()))
+p.grain_width
+
+```
+
+
+## Grain length
+```{r}
+# lm
+m.grain <-  lm(grain_length ~ trt * PCA_soil_chem_1, d.gr_par)
+plot.mod.vg(m.grain)
+
+# Tidy anova output
+lab.grain <- Anova(m.grain) %>% output_anova_phen()
+
+# Plot conditioning
+p.cond <- plot_box_wheat_feed(my_dat = d.gr_par, var_measured = grain_length,
+                    y_lab = expression(paste("Grain length (mm)")),
+                    tab_anova = lab.grain)+
+  scale_y_continuous(expand = expansion(mult = c(0.1, 0.16)))
+
+# Plot soil chemistry
+p.soil <- plot_pc1_reg(my_dat = d.gr_par, 
+             var_measured = grain_length,
+             y_lab = expression(paste("Grain length (mm)")))+
+  scale_y_continuous(expand = expansion(mult = c(0.1, 0.2)))
+
+# Plot local feedback Local feedback
+d.new_LLR <- surrounding_lrr(variable = grain_length, data = d.gr_par)
+LRR <- d.new_LLR %>% select(contains("lrr")) %>% names() %>% sym()
+p.psf <- ggplot_lrr(data = d.new_LLR) + 
+  impr_graph_lrr(data = d.new_LLR) +
+  ylab("Local feedback on grain length") +
+  scale_y_continuous(expand = expansion(mult = c(0.1, 0.2)))
+
+```
+
+combine plots
+```{r, fig.width=7, fig.height=5}
+p.grain_length <- plot_comb(p.cond + theme(legend.position="none", axis.title.x = element_blank()), 
+                            p.psf + theme(legend.position="none", axis.title.x = element_blank()))
+p.grain_length
+```
+
+## Grain area
+```{r}
+# lm
+m.grain <-  lm(grain_area ~ trt * PCA_soil_chem_1, d.gr_par)
+plot.mod.vg(m.grain)
+
+# Tidy anova output
+lab.grain <- Anova(m.grain) %>% output_anova_phen()
+
+# Plot conditioning
+p.cond <- plot_box_wheat_feed(my_dat = d.gr_par, var_measured = grain_area,
+                    y_lab = expression(paste("Grain area (mm"^"2", ")")),
+                    tab_anova = lab.grain)+
+  scale_y_continuous(expand = expansion(mult = c(0.1, 0.16)))
+
+# Plot soil chemistry
+p.soil <- plot_pc1_reg(my_dat = d.gr_par, 
+             var_measured = grain_area,
+             y_lab = expression(paste("Grain area (mm"^"2", ")")))+
+  scale_y_continuous(expand = expansion(mult = c(0.1, 0.2)))
+
+# Plot local feedback Local feedback
+d.new_LLR <- surrounding_lrr(variable = grain_area, data = d.gr_par)
+LRR <- d.new_LLR %>% select(contains("lrr")) %>% names() %>% sym()
+p.psf <- ggplot_lrr(data = d.new_LLR) + 
+  impr_graph_lrr(data = d.new_LLR) +
+  ylab("Local feedback on grain area") +
+  scale_y_continuous(expand = expansion(mult = c(0.1, 0.2)))
+
+```
+
+combine plots
+```{r, fig.width=7, fig.height=5}
+p.grain_area <- plot_comb(p.cond + theme(legend.position="none", 
+                                         axis.title.x = element_blank()), 
+                            p.psf + theme(legend.position="none", 
+                                          axis.title.x = element_blank()))
+p.grain_area
+```
+
+## TKW
+```{r}
+# lm
+m.grain <-  lm(tkw ~ trt * PCA_soil_chem_1, d.gr_par)
+plot.mod.vg(m.grain)
+
+# Tidy anova output
+lab.grain <- Anova(m.grain) %>% output_anova_phen()
+
+# Plot conditioning
+p.cond <- plot_box_wheat_feed(my_dat = d.gr_par, var_measured = tkw,
+                    y_lab = expression(paste("Thousand kernel weight (g)")),
+                    tab_anova = lab.grain)+
+  scale_y_continuous(expand = expansion(mult = c(0.1, 0.16)))
+
+# Plot soil chemistry
+p.soil <- plot_pc1_reg(my_dat = d.gr_par, 
+             var_measured = tkw,
+             y_lab = expression(paste("Thousand kernel weight (g)")))+
+  scale_y_continuous(expand = expansion(mult = c(0.1, 0.2)))
+
+# Plot local feedback Local feedback
+d.new_LLR <- surrounding_lrr(variable = tkw, data = d.gr_par)
+LRR <- d.new_LLR %>% select(contains("lrr")) %>% names() %>% sym()
+p.psf <- ggplot_lrr(data = d.new_LLR) + 
+  impr_graph_lrr(data = d.new_LLR) +
+  ylab("Local feedback on TKW") +
+  scale_y_continuous(expand = expansion(mult = c(0.1, 0.2)))
+
+```
+
+combine plots
+```{r, fig.width=7, fig.height=5}
+p.tkw <- plot_comb(p.cond + theme(legend.position="none", 
+                                  axis.title.x = element_blank()), 
+                            p.psf + theme(legend.position="none", 
+                                          axis.title.x = element_blank()))
+p.tkw
+
+```
+
+
+## Volume weight
+```{r}
+# removing outliers makes it even more significant!!!
+#d.gr_par$vol_weigh[c(3, 5)] <- NA
+
+# lm
+m.grain <-  lm(vol_weigh ~ trt * PCA_soil_chem_1, d.gr_par)
+plot.mod.vg(m.grain)
+
+# Tidy anova output
+lab.grain <- Anova(m.grain) %>% output_anova_phen()
+
+# Plot conditioning
+p.cond <- plot_box_wheat_feed(my_dat = d.gr_par, var_measured = vol_weigh,
+                    y_lab = expression(paste("Volume weight (kg/hectoliter)")),
+                    tab_anova = lab.grain)+
+  scale_y_continuous(expand = expansion(mult = c(0.1, 0.16)))
+
+# Plot soil chemistry
+p.soil <- plot_pc1_reg(my_dat = d.gr_par, 
+             var_measured = vol_weigh,
+             y_lab = expression(paste("Volume weight (kg/hectoliter)")))+
+  scale_y_continuous(expand = expansion(mult = c(0.1, 0.2)))
+
+# Plot local feedback Local feedback
+d.new_LLR <- surrounding_lrr(variable = vol_weigh, data = d.gr_par)
+LRR <- d.new_LLR %>% select(contains("lrr")) %>% names() %>% sym()
+p.psf <- ggplot_lrr(data = d.new_LLR) + 
+  impr_graph_lrr(data = d.new_LLR) +
+  ylab("Local feedback on volume weight") +
+  scale_y_continuous(expand = expansion(mult = c(0.1, 0.2)))
+
+```
+
+combine plots
+```{r, fig.width=7, fig.height=5}
+p.vol_weigh <- plot_comb(p.cond + theme(legend.position="none", 
+                                        axis.title.x = element_blank()), 
+                            p.psf + theme(legend.position="none", 
+                                          axis.title.x = element_blank()))
+p.vol_weigh
+```
+
+## Protein content
+```{r}
+# lm
+m.grain <-  lm(protein ~ trt * PCA_soil_chem_1, d.gr_par)
+plot.mod.vg(m.grain)
+
+# Tidy anova output
+lab.grain <- Anova(m.grain) %>% output_anova_phen()
+
+# Plot conditioning
+p.cond <- plot_box_wheat_feed(my_dat = d.gr_par, var_measured = protein,
+                    y_lab = expression(paste("Protein content (%)")),
+                    tab_anova = lab.grain)+
+  scale_y_continuous(expand = expansion(mult = c(0.1, 0.16)))
+
+# Plot soil chemistry
+p.soil <- plot_pc1_reg(my_dat = d.gr_par, 
+             var_measured = protein,
+             y_lab = expression(paste("Protein content (%)")))+
+  scale_y_continuous(expand = expansion(mult = c(0.1, 0.2)))
+
+# Plot local feedback Local feedback
+d.new_LLR <- surrounding_lrr(variable = protein, data = d.gr_par)
+LRR <- d.new_LLR %>% select(contains("lrr")) %>% names() %>% sym()
+p.psf <- ggplot_lrr(data = d.new_LLR) + 
+  impr_graph_lrr(data = d.new_LLR) +
+  ylab("Local feedback on protein content") +
+  scale_y_continuous(expand = expansion(mult = c(0.1, 0.2)))
+
+```
+
+combine plots
+```{r, fig.width=7, fig.height=5}
+p.protein <- plot_comb(p.cond + theme(legend.position="none"), 
+                            p.psf + theme(legend.position="none"))
+p.protein
+```
+
+
+
+
+## Zeleny index
+```{r}
+# lm
+m.grain <-  lm(zeleny ~ trt * PCA_soil_chem_1, d.gr_par)
+plot.mod.vg(m.grain)
+
+# Tidy anova output
+lab.grain <- Anova(m.grain) %>% output_anova_phen()
+
+# Plot conditioning
+p.cond <- plot_box_wheat_feed(my_dat = d.gr_par, var_measured = zeleny,
+                    y_lab = expression(paste("Zeleny (ml)")),
+                    tab_anova = lab.grain)+
+  scale_y_continuous(expand = expansion(mult = c(0.1, 0.16)))
+
+# Plot soil chemistry
+p.soil <- plot_pc1_reg(my_dat = d.gr_par, 
+             var_measured = zeleny,
+             y_lab = expression(paste("Zeleny (ml)")))+
+  scale_y_continuous(expand = expansion(mult = c(0.1, 0.2)))
+
+# Plot local feedback Local feedback
+d.new_LLR <- surrounding_lrr(variable = zeleny, data = d.gr_par)
+LRR <- d.new_LLR %>% select(contains("lrr")) %>% names() %>% sym()
+p.psf <- ggplot_lrr(data = d.new_LLR) + 
+  impr_graph_lrr(data = d.new_LLR) +
+  ylab("Local feedback on Zeleny index") +
+  scale_y_continuous(expand = expansion(mult = c(0.1, 0.2)))
+
+```
+
+combine plots
+```{r, fig.width=7, fig.height=5}
+p.zeleny <- plot_comb(p.cond + theme(axis.title.x = element_blank()), 
+                            p.psf + theme(axis.title.x = element_blank()))
+p.zeleny
+```
+
+## Falling number
+```{r}
+# lm
+m.grain <-  lm(falling_number ~ trt * PCA_soil_chem_1, d.gr_par)
+plot.mod.vg(m.grain)
+
+# Tidy anova output
+lab.grain <- Anova(m.grain) %>% output_anova_phen()
+
+# Plot conditioning
+p.cond <- plot_box_wheat_feed(my_dat = d.gr_par, var_measured = falling_number,
+                    y_lab = expression(paste("Falling number (s)")),
+                    tab_anova = lab.grain)+
+  scale_y_continuous(expand = expansion(mult = c(0.1, 0.16)))
+
+# Plot soil chemistry
+p.soil <- plot_pc1_reg(my_dat = d.gr_par, 
+             var_measured = falling_number,
+             y_lab = expression(paste("Falling number (s)")))+
+  scale_y_continuous(expand = expansion(mult = c(0.1, 0.2)))
+
+# Plot local feedback Local feedback
+d.new_LLR <- surrounding_lrr(variable = falling_number, data = d.gr_par)
+LRR <- d.new_LLR %>% select(contains("lrr")) %>% names() %>% sym()
+p.psf <- ggplot_lrr(data = d.new_LLR) + 
+  impr_graph_lrr(data = d.new_LLR) +
+  ylab("Local feedback on falling number") +
+  scale_y_continuous(expand = expansion(mult = c(0.1, 0.2)))
+
+```
+
+combine plots
+```{r, fig.width=7, fig.height=5}
+p.falling_number <- plot_comb(p.cond + theme(legend.position="none",
+                                             axis.title.x = element_blank()), 
+                            p.psf + theme(legend.position="none",
+                                          axis.title.x = element_blank()))
+p.falling_number
+```
+
+## Dough water absorption
+```{r}
+# lm
+m.grain <-  lm(water_absorption ~ trt * PCA_soil_chem_1, d.gr_par)
+plot.mod.vg(m.grain)
+
+# Tidy anova output
+lab.grain <- Anova(m.grain) %>% output_anova_phen()
+
+# Plot conditioning
+p.cond <- plot_box_wheat_feed(my_dat = d.gr_par, var_measured = water_absorption,
+                    y_lab = expression(paste("Dough water absorption (%)")),
+                    tab_anova = lab.grain)+
+  scale_y_continuous(expand = expansion(mult = c(0.1, 0.16)))
+
+# Plot soil chemistry
+p.soil <- plot_pc1_reg(my_dat = d.gr_par, 
+             var_measured = water_absorption,
+             y_lab = expression(paste("Dough water absorption (%)")))+
+  scale_y_continuous(expand = expansion(mult = c(0.1, 0.2)))
+
+# Plot local feedback Local feedback
+d.new_LLR <- surrounding_lrr(variable = water_absorption, data = d.gr_par)
+LRR <- d.new_LLR %>% select(contains("lrr")) %>% names() %>% sym()
+p.psf <- ggplot_lrr(data = d.new_LLR) + 
+  impr_graph_lrr(data = d.new_LLR) +
+  ylab("Local feedback on dough water absorption") +
+  scale_y_continuous(expand = expansion(mult = c(0.1, 0.2)))
+
+```
+
+combine plots
+```{r, fig.width=7, fig.height=5}
+p.water_absorption <- plot_comb(p.cond + theme(legend.position="none",
+                                               axis.title.x = element_blank()), 
+                            p.psf + theme(legend.position="none",
+                                          axis.title.x = element_blank()))
+p.water_absorption
+```
+
+
+
+## Dough softening
+```{r}
+# lm
+m.grain <-  lm(dough_softening ~ trt * PCA_soil_chem_1, d.gr_par)
+plot.mod.vg(m.grain)
+
+# Tidy anova output
+lab.grain <- Anova(m.grain) %>% output_anova_phen()
+
+# Plot conditioning
+p.cond <- plot_box_wheat_feed(my_dat = d.gr_par, var_measured = dough_softening,
+                    y_lab = expression(paste("Dough softening (FU)")),
+                    tab_anova = lab.grain)+
+  scale_y_continuous(expand = expansion(mult = c(0.1, 0.16)))
+
+# Plot soil chemistry
+p.soil <- plot_pc1_reg(my_dat = d.gr_par, 
+             var_measured = dough_softening,
+             y_lab = expression(paste("Dough softening (FU)")))+
+  scale_y_continuous(expand = expansion(mult = c(0.1, 0.2)))
+
+# Plot local feedback Local feedback
+d.new_LLR <- surrounding_lrr(variable = dough_softening, data = d.gr_par)
+LRR <- d.new_LLR %>% select(contains("lrr")) %>% names() %>% sym()
+p.psf <- ggplot_lrr(data = d.new_LLR) + 
+  impr_graph_lrr(data = d.new_LLR) +
+  ylab("Local feedback on dough softening") +
+  scale_y_continuous(expand = expansion(mult = c(0.1, 0.2)))
+
+```
+
+combine plots
+```{r, fig.width=7, fig.height=5}
+p.dough_softening <- plot_comb(p.cond + theme(legend.position="none",
+                                              axis.title.x = element_blank()), 
+                            p.psf + theme(legend.position="none", 
+                                          axis.title.x = element_blank()))
+p.dough_softening
+```
+
+## Dough stability
+```{r}
+# lm
+m.grain <-  lm(dough_stability ~ trt * PCA_soil_chem_1, d.gr_par)
+plot.mod.vg(m.grain)
+
+# Tidy anova output
+lab.grain <- Anova(m.grain) %>% output_anova_phen()
+
+# Plot conditioning
+p.cond <- plot_box_wheat_feed(my_dat = d.gr_par, var_measured = dough_stability,
+                    y_lab = expression(paste("Dough stability (min)")),
+                    tab_anova = lab.grain)+
+  scale_y_continuous(expand = expansion(mult = c(0.1, 0.16)))
+
+# Plot soil chemistry
+p.soil <- plot_pc1_reg(my_dat = d.gr_par, 
+             var_measured = dough_stability,
+             y_lab = expression(paste("Dough stability (min)")))+
+  scale_y_continuous(expand = expansion(mult = c(0.1, 0.2)))
+
+# Plot local feedback Local feedback
+d.new_LLR <- surrounding_lrr(variable = dough_stability, data = d.gr_par)
+LRR <- d.new_LLR %>% select(contains("lrr")) %>% names() %>% sym()
+p.psf <- ggplot_lrr(data = d.new_LLR) + 
+  impr_graph_lrr(data = d.new_LLR) +
+  ylab("Local feedback on dough stability") +
+  scale_y_continuous(expand = expansion(mult = c(0.1, 0.2)))
+
+```
+
+combine plots
+```{r, fig.width=7, fig.height=5}
+p.dough_stability <- plot_comb(p.cond + theme(legend.position="none"), 
+                            p.psf + theme(legend.position="none"))
+p.dough_stability
+```
+
+# Fig. S11
+```{r}
+# combine plots
+p <- plot_grid(p.grain_width,  p.zeleny,
+               p.grain_length, p.falling_number,
+               p.grain_area,   p.water_absorption,
+               p.tkw,          p.dough_softening,
+               p.vol_weigh,    p.dough_stability,
+               p.protein,
+               ncol = 2, align = "v", labels = c("A", "G", "B", "H", "C", "I",
+                                                 "D", "J", "E", "K", "F"),
+               rel_heights =c(1.2, 1, 1, 1, 1, 1.1))
+p
+
+ggsave(here("Figures", "individual_figures", "Fig.S11.svg"), 
+       width = 38, height =  51, units = "cm")
+```
+
+
+
+
+# Grain parameter Eurofins
+Missing values are values below limit of quantification
+
+```{r include=FALSE}
+# import data
+d.gr_eu_par <- read_delim(file = here("Data", "04_Grain_parameters",
+                                      "Exp_m18w19_grain_analysis_eurofins_changins.csv"),
+                          delim = ",", col_names = TRUE)
+
+# append PCA of soil analysis
+d.gr_eu_par <- left_join(d.gr_eu_par, d.soil_chem, by =c("length", "width"))
+
+# check data
+head(d.gr_eu_par)
+str(d.gr_eu_par)
+summary(d.gr_eu_par)
+```
+
+exclude parameter without data
+```{r warning=FALSE, include=FALSE}
+# remove samples without any measurements or lack in variation
+d.gr_eu_par <- d.gr_eu_par %>% 
+  filter(!str_detect(parameter, "aflatoxin"),
+         !str_detect(parameter, "ZON"),
+         !str_detect(parameter, "sin"),
+         !str_detect(parameter, "trans"),
+         !str_detect(parameter, "ochra"),
+         !str_detect(parameter, "salt"),
+         !str_detect(parameter, "HT2"),
+         !str_detect(parameter, "T2"),
+         !str_detect(parameter, "FA")) 
+
+```
+
+```{r include=FALSE}
+d.gr_eu <- d.gr_eu_par %>% 
+  pivot_wider(id_cols = c(1:5, 9:12), names_from = parameter, values_from = value)
+
+d.gr_eu
+
+d.gr_eu_par %>% 
+  mutate(parameter_unit = paste0(parameter, "_", unit)) %>% pull(parameter_unit) %>% unique()
+```
+
+
+## Energy
+```{r}
+# lm
+m.grain <-  lm(energy ~ trt * PCA_soil_chem_1, d.gr_eu)
+plot.mod.vg(m.grain)
+
+# Tidy anova output
+lab.grain <- Anova(m.grain) %>% output_anova_phen()
+
+# Plot conditioning
+p.cond <- plot_box_wheat_feed(my_dat = d.gr_eu, var_measured = energy,
+                    y_lab = expression(paste("Energy (kJ/100 g)")),
+                    tab_anova = lab.grain)+
+  scale_y_continuous(expand = expansion(mult = c(0.1, 0.16)))
+
+# Plot soil chemistry
+p.soil <- plot_pc1_reg(my_dat = d.gr_eu, 
+             var_measured = energy,
+             y_lab = expression(paste("Energy (kJ/100 g)")))+
+  scale_y_continuous(expand = expansion(mult = c(0.1, 0.2)))
+
+# Plot local feedback Local feedback
+d.new_LLR <- surrounding_lrr(variable = energy, data = d.gr_eu)
+LRR <- d.new_LLR %>% select(contains("lrr")) %>% names() %>% sym()
+p.psf <- ggplot_lrr(data = d.new_LLR) + 
+  impr_graph_lrr(data = d.new_LLR) +
+  ylab("Local feedback on grain energy") +
+  scale_y_continuous(expand = expansion(mult = c(0.1, 0.2)))
+
+```
+
+combine plots
+```{r, fig.width=7, fig.height=5}
+p.energy <- plot_comb(p.cond + theme(axis.title.x = element_blank()), 
+          p.psf + theme(axis.title.x = element_blank()))
+p.energy
+
+```
+
+
+## Carbohydrates
+```{r}
+# remove outlier
+d.gr_eu$carbohydrates[d.gr_eu$carbohydrates=="58.5"] <- NA
+
+# lm
+m.grain <-  lm(carbohydrates ~ trt * PCA_soil_chem_1, d.gr_eu)
+plot.mod.vg(m.grain)
+
+# Tidy anova output
+lab.grain <- Anova(m.grain) %>% output_anova_phen()
+
+# Plot conditioning
+p.cond <- plot_box_wheat_feed(my_dat = d.gr_eu, var_measured = carbohydrates,
+                    y_lab = expression(paste("Carbohydrates (g/100 g)")),
+                    tab_anova = lab.grain)+
+  scale_y_continuous(expand = expansion(mult = c(0.1, 0.16)))
+
+# Plot soil chemistry
+p.soil <- plot_pc1_reg(my_dat = d.gr_eu, 
+             var_measured = carbohydrates,
+             y_lab = expression(paste("Carbohydrates (g/100 g)")))+
+  scale_y_continuous(expand = expansion(mult = c(0.1, 0.2)))
+
+# Plot local feedback Local feedback
+d.new_LLR <- surrounding_lrr(variable = carbohydrates, data = d.gr_eu)
+LRR <- d.new_LLR %>% select(contains("lrr")) %>% names() %>% sym()
+p.psf <- ggplot_lrr(data = d.new_LLR) + 
+  impr_graph_lrr(data = d.new_LLR) +
+  ylab("Local feedback on carbohydrates") +
+  scale_y_continuous(expand = expansion(mult = c(0.1, 0.2)))
+
+```
+
+combine plots
+```{r, fig.width=7, fig.height=5}
+p.carbohydrates <- plot_comb(p.cond + theme(legend.position="none", axis.title.x = element_blank()), 
+          p.psf + theme(legend.position="none", axis.title.x = element_blank())) 
+p.carbohydrates
+
+```
+
+
+## Starch
+```{r}
+# remove outlier
+d.gr_eu$starch[d.gr_eu$starch=="61.9"] <- NA
+
+# lm
+m.grain <-  lm(starch ~ trt * PCA_soil_chem_1, d.gr_eu)
+plot.mod.vg(m.grain)
+
+# Tidy anova output
+lab.grain <- Anova(m.grain) %>% output_anova_phen()
+
+# Plot conditioning
+p.cond <- plot_box_wheat_feed(my_dat = d.gr_eu, var_measured = starch,
+                    y_lab = expression(paste("Starch (g/100 g)")),
+                    tab_anova = lab.grain)+
+  scale_y_continuous(expand = expansion(mult = c(0.1, 0.16)))
+
+# Plot soil chemistry
+p.soil <- plot_pc1_reg(my_dat = d.gr_eu, 
+             var_measured = starch,
+             y_lab = expression(paste("Starch (g/100 g)")))+
+  scale_y_continuous(expand = expansion(mult = c(0.1, 0.2)))
+
+# Plot local feedback Local feedback
+d.new_LLR <- surrounding_lrr(variable = starch, data = d.gr_eu)
+LRR <- d.new_LLR %>% select(contains("lrr")) %>% names() %>% sym()
+p.psf <- ggplot_lrr(data = d.new_LLR) + 
+  impr_graph_lrr(data = d.new_LLR) +
+  ylab("Local feedback on starch") +
+  scale_y_continuous(expand = expansion(mult = c(0.1, 0.2)))
+
+```
+
+combine plots
+```{r, fig.width=7, fig.height=5}
+p.starch <- plot_comb(p.cond + theme(legend.position="none", axis.title.x = element_blank()), 
+          p.psf + theme(legend.position="none", axis.title.x = element_blank()))
+p.starch
+```
+
+
+## Sugars
+```{r}
+# remove outlier
+d.gr_eu$sugars[d.gr_eu$sugars=="0.2"] <- NA
+
+# lm
+m.grain <-  lm(sugars ~ trt * PCA_soil_chem_1, d.gr_eu)
+plot.mod.vg(m.grain)
+
+# Tidy anova output
+lab.grain <- Anova(m.grain) %>% output_anova_phen()
+
+# Plot conditioning
+p.cond <- plot_box_wheat_feed(my_dat = d.gr_eu, var_measured = sugars,
+                    y_lab = expression(paste("Sugar (g/100 g)")),
+                    tab_anova = lab.grain)+
+  scale_y_continuous(expand = expansion(mult = c(0.1, 0.16)))
+
+# Plot soil chemistry
+p.soil <- plot_pc1_reg(my_dat = d.gr_eu, 
+             var_measured = sugars,
+             y_lab = expression(paste("Sugar (g/100 g)")))+
+  scale_y_continuous(expand = expansion(mult = c(0.1, 0.2)))
+
+# Plot local feedback Local feedback
+d.new_LLR <- surrounding_lrr(variable = sugars, data = d.gr_eu)
+LRR <- d.new_LLR %>% select(contains("lrr")) %>% names() %>% sym()
+p.psf <- ggplot_lrr(data = d.new_LLR) + 
+  impr_graph_lrr(data = d.new_LLR) +
+  ylab("Local feedback on sugar") +
+  scale_y_continuous(expand = expansion(mult = c(0.1, 0.2)))
+
+```
+
+combine plots
+```{r, fig.width=7, fig.height=5}
+p.sugars <- plot_comb(p.cond + theme(legend.position="none", axis.title.x = element_blank()), 
+          p.psf + theme(legend.position="none", axis.title.x = element_blank()))
+p.sugars
+```
+
+
+
+## Dietary fiber 
+```{r}
+# remove outlier
+d.gr_eu$dietary_fiber[d.gr_eu$dietary_fiber==15.9] <- NA
+
+# lm
+m.grain <-  lm(dietary_fiber ~ trt * PCA_soil_chem_1, d.gr_eu)
+plot.mod.vg(m.grain)
+
+# Tidy anova output
+lab.grain <- Anova(m.grain) %>% output_anova_phen()
+
+# Plot conditioning
+p.cond <- plot_box_wheat_feed(my_dat = d.gr_eu, var_measured = dietary_fiber,
+                    y_lab = expression(paste("Dietary fiber (g/100 g)")),
+                    tab_anova = lab.grain)+
+  scale_y_continuous(expand = expansion(mult = c(0.1, 0.16)))
+
+# Plot soil chemistry
+p.soil <- plot_pc1_reg(my_dat = d.gr_eu, 
+             var_measured = dietary_fiber,
+             y_lab = expression(paste("Dietary fiber (g/100 g)")))+
+  scale_y_continuous(expand = expansion(mult = c(0.1, 0.2)))
+
+# Plot local feedback Local feedback
+d.new_LLR <- surrounding_lrr(variable = dietary_fiber, data = d.gr_eu)
+LRR <- d.new_LLR %>% select(contains("lrr")) %>% names() %>% sym()
+p.psf <- ggplot_lrr(data = d.new_LLR) + 
+  impr_graph_lrr(data = d.new_LLR) +
+  ylab("Local feedback on dietary fiber") +
+  scale_y_continuous(expand = expansion(mult = c(0.1, 0.2)))
+
+```
+
+combine plots
+```{r, fig.width=7, fig.height=5}
+p.dietary_fibe <- plot_comb(p.cond + theme(legend.position="none", axis.title.x = element_blank()), 
+          p.psf + theme(legend.position="none", axis.title.x = element_blank()))
+p.dietary_fibe
+```
+
+
+
+## Fat
+```{r}
+# lm
+m.grain <-  lm(fat ~ trt * PCA_soil_chem_1, d.gr_eu)
+plot.mod.vg(m.grain)
+
+# Tidy anova output
+lab.grain <- Anova(m.grain) %>% output_anova_phen()
+
+# Plot conditioning
+p.cond <- plot_box_wheat_feed(my_dat = d.gr_eu, var_measured = fat,
+                    y_lab = expression(paste("Fat (g/100 g)")),
+                    tab_anova = lab.grain)+
+  scale_y_continuous(expand = expansion(mult = c(0.1, 0.16)))
+
+# Plot soil chemistry
+p.soil <- plot_pc1_reg(my_dat = d.gr_eu, 
+             var_measured = fat,
+             y_lab = expression(paste("Fat (g/100 g)")))+
+  scale_y_continuous(expand = expansion(mult = c(0.1, 0.2)))
+
+# Plot local feedback Local feedback
+d.new_LLR <- surrounding_lrr(variable = fat, data = d.gr_eu)
+LRR <- d.new_LLR %>% select(contains("lrr")) %>% names() %>% sym()
+p.psf <- ggplot_lrr(data = d.new_LLR) + 
+  impr_graph_lrr(data = d.new_LLR) +
+  ylab("Local feedback on fat") +
+  scale_y_continuous(expand = expansion(mult = c(0.1, 0.2)))
+
+```
+
+combine plots
+```{r, fig.width=7, fig.height=5}
+p.fat <- plot_comb(p.cond + theme(axis.title.x = element_blank()), 
+          p.psf + theme(axis.title.x = element_blank()))
+p.fat
+```
+
+
+## Protein
+```{r}
+# lm
+m.grain <-  lm(protein ~ trt * PCA_soil_chem_1, d.gr_eu)
+plot.mod.vg(m.grain)
+
+# Tidy anova output
+lab.grain <- Anova(m.grain) %>% output_anova_phen()
+
+# Plot conditioning
+p.cond <- plot_box_wheat_feed(my_dat = d.gr_eu, var_measured = protein,
+                    y_lab = expression(paste("Protein (g/100 g)")),
+                    tab_anova = lab.grain)+
+  scale_y_continuous(expand = expansion(mult = c(0.1, 0.16)))
+
+# Plot soil chemistry
+p.soil <- plot_pc1_reg(my_dat = d.gr_eu, 
+             var_measured = protein,
+             y_lab = expression(paste("Protein (g/100 g)")))+
+  scale_y_continuous(expand = expansion(mult = c(0.1, 0.2)))
+
+# Plot local feedback Local feedback
+d.new_LLR <- surrounding_lrr(variable = protein, data = d.gr_eu)
+LRR <- d.new_LLR %>% select(contains("lrr")) %>% names() %>% sym()
+p.psf <- ggplot_lrr(data = d.new_LLR) + 
+  impr_graph_lrr(data = d.new_LLR) +
+  ylab("Local feedback on protein") +
+  scale_y_continuous(expand = expansion(mult = c(0.1, 0.2)))
+
+```
+
+combine plots
+```{r, fig.width=7, fig.height=5}
+p.protein <- plot_comb(p.cond + theme(legend.position="none"), 
+          p.psf + theme(legend.position="none"))
+p.protein
+```
+
+
+## Ash
+```{r}
+# lm
+m.grain <-  lm(ash ~ trt * PCA_soil_chem_1, d.gr_eu)
+plot.mod.vg(m.grain)
+
+# Tidy anova output
+lab.grain <- Anova(m.grain) %>% output_anova_phen()
+
+# Plot conditioning
+p.cond <- plot_box_wheat_feed(my_dat = d.gr_eu, var_measured = ash,
+                    y_lab = expression(paste("Ash (g/100 g)")),
+                    tab_anova = lab.grain)+
+  scale_y_continuous(expand = expansion(mult = c(0.1, 0.16)))
+
+# Plot soil chemistry
+p.soil <- plot_pc1_reg(my_dat = d.gr_eu, 
+             var_measured = ash,
+             y_lab = expression(paste("Ash (g/100 g)")))+
+  scale_y_continuous(expand = expansion(mult = c(0.1, 0.2)))
+
+# Plot local feedback Local feedback
+d.new_LLR <- surrounding_lrr(variable = ash, data = d.gr_eu)
+LRR <- d.new_LLR %>% select(contains("lrr")) %>% names() %>% sym()
+p.psf <- ggplot_lrr(data = d.new_LLR) + 
+  impr_graph_lrr(data = d.new_LLR) +
+  ylab("Local feedback on ash") +
+  scale_y_continuous(expand = expansion(mult = c(0.1, 0.2)))
+
+```
+
+combine plots
+```{r, fig.width=7, fig.height=5}
+p.ash <- plot_comb(p.cond + theme(legend.position="none", axis.title.x = element_blank()), 
+          p.psf + theme(legend.position="none", axis.title.x = element_blank()))
+p.ash
+```
+
+## Water content
+```{r}
+# lm
+m.grain <-  lm(water_content ~ trt * PCA_soil_chem_1, d.gr_eu)
+plot.mod.vg(m.grain)
+
+# Tidy anova output
+lab.grain <- Anova(m.grain) %>% output_anova_phen()
+
+# Plot conditioning
+p.cond <- plot_box_wheat_feed(my_dat = d.gr_eu, var_measured = water_content,
+                    y_lab = expression(paste("Water content (g/100 g)")),
+                    tab_anova = lab.grain)+
+  scale_y_continuous(expand = expansion(mult = c(0.1, 0.16)))
+
+# Plot soil chemistry
+p.soil <- plot_pc1_reg(my_dat = d.gr_eu, 
+             var_measured = water_content,
+             y_lab = expression(paste("Water content (g/100 g)")))+
+  scale_y_continuous(expand = expansion(mult = c(0.1, 0.2)))
+
+# Plot local feedback Local feedback
+d.new_LLR <- surrounding_lrr(variable = water_content, data = d.gr_eu)
+LRR <- d.new_LLR %>% select(contains("lrr")) %>% names() %>% sym()
+p.psf <- ggplot_lrr(data = d.new_LLR) + 
+  impr_graph_lrr(data = d.new_LLR) +
+  ylab("Local feedback on water content") +
+  scale_y_continuous(expand = expansion(mult = c(0.1, 0.2)))
+
+```
+
+combine plots
+```{r, fig.width=7, fig.height=5}
+p.water_content <- plot_comb(p.cond + theme(legend.position="none", axis.title.x = element_blank()), 
+          p.psf + theme(legend.position="none", axis.title.x = element_blank()))
+p.water_content
+
+```
+
+
+## Sodium
+```{r}
+# lm
+m.grain <-  lm(sodium ~ trt * PCA_soil_chem_1, d.gr_eu)
+plot.mod.vg(m.grain)
+
+# Tidy anova output
+lab.grain <- Anova(m.grain) %>% output_anova_phen()
+
+# Plot conditioning
+p.cond <- plot_box_wheat_feed(my_dat = d.gr_eu, var_measured = sodium,
+                    y_lab = expression(paste("Sodium (mg/kg)")),
+                    tab_anova = lab.grain)+
+  scale_y_continuous(expand = expansion(mult = c(0.1, 0.16)))
+
+# Plot soil chemistry
+p.soil <- plot_pc1_reg(my_dat = d.gr_eu, 
+             var_measured = sodium,
+             y_lab = expression(paste("Sodium (mg/kg)")))+
+  scale_y_continuous(expand = expansion(mult = c(0.1, 0.2)))
+
+# Plot local feedback Local feedback
+d.new_LLR <- surrounding_lrr(variable = sodium, data = d.gr_eu)
+LRR <- d.new_LLR %>% select(contains("lrr")) %>% names() %>% sym()
+p.psf <- ggplot_lrr(data = d.new_LLR) + 
+  impr_graph_lrr(data = d.new_LLR) +
+  ylab("Local feedback on sodium") +
+  scale_y_continuous(expand = expansion(mult = c(0.1, 0.2)))
+
+```
+
+combine plots
+```{r, fig.width=7, fig.height=5}
+p.sodium <- plot_comb(p.cond + theme(legend.position="none", axis.title.x = element_blank()), 
+          p.psf + theme(legend.position="none", axis.title.x = element_blank()))
+p.sodium
+```
+
+
+## Iron
+```{r}
+# lm
+m.grain <-  lm(iron ~ trt * PCA_soil_chem_1, d.gr_eu)
+plot.mod.vg(m.grain)
+
+# Tidy anova output
+lab.grain <- Anova(m.grain) %>% output_anova_phen()
+
+# Plot conditioning
+p.cond <- plot_box_wheat_feed(my_dat = d.gr_eu, var_measured = iron,
+                    y_lab = expression(paste("Iron (mg/kg)")),
+                    tab_anova = lab.grain)+
+  scale_y_continuous(expand = expansion(mult = c(0.1, 0.16)))
+
+# Plot soil chemistry
+p.soil <- plot_pc1_reg(my_dat = d.gr_eu, 
+             var_measured = iron,
+             y_lab = expression(paste("Iron (mg/kg)")))+
+  scale_y_continuous(expand = expansion(mult = c(0.1, 0.2)))
+
+# Plot local feedback Local feedback
+d.new_LLR <- surrounding_lrr(variable = iron, data = d.gr_eu)
+LRR <- d.new_LLR %>% select(contains("lrr")) %>% names() %>% sym()
+p.psf <- ggplot_lrr(data = d.new_LLR) + 
+  impr_graph_lrr(data = d.new_LLR) +
+  ylab("Local feedback on iron") +
+  scale_y_continuous(expand = expansion(mult = c(0.1, 0.2)))
+
+```
+
+combine plots
+```{r, fig.width=7, fig.height=5}
+p.iron <- plot_comb(p.cond + theme(legend.position="none", axis.title.x = element_blank()), 
+          p.psf + theme(legend.position="none", axis.title.x = element_blank()))
+p.iron
+
+```
+
+
+## Deoxynivalenol (ug/kg)
+```{r}
+# lm
+m.grain <-  lm(deoxynivalenol_vomitoxin ~ trt * PCA_soil_chem_1, d.gr_eu)
+plot.mod.vg(m.grain)
+
+# Tidy anova output
+lab.grain <- Anova(m.grain) %>% output_anova_phen()
+
+# Plot conditioning
+p.cond <- plot_box_wheat_feed(my_dat = d.gr_eu, var_measured = deoxynivalenol_vomitoxin,
+                    y_lab = expression(paste("Deoxynivalenol (ug/kg)")),
+                    tab_anova = lab.grain)+
+  scale_y_continuous(expand = expansion(mult = c(0.1, 0.16)))
+
+# Plot soil chemistry
+p.soil <- plot_pc1_reg(my_dat = d.gr_eu, 
+             var_measured = deoxynivalenol_vomitoxin,
+             y_lab = expression(paste("Deoxynivalenol (ug/kg)")))+
+  scale_y_continuous(expand = expansion(mult = c(0.1, 0.2)))
+
+# Plot local feedback Local feedback
+d.new_LLR <- surrounding_lrr(variable = deoxynivalenol_vomitoxin, data = d.gr_eu)
+LRR <- d.new_LLR %>% select(contains("lrr")) %>% names() %>% sym()
+p.psf <- ggplot_lrr(data = d.new_LLR) + 
+  impr_graph_lrr(data = d.new_LLR) +
+  ylab("Local feedback on deoxynivalenol") +
+  scale_y_continuous(expand = expansion(mult = c(0.1, 0.2)))
+
+```
+
+combine plots
+```{r, fig.width=7, fig.height=5}
+p.deoxynivalenol_vomitoxin <- plot_comb(p.cond + theme(legend.position="none"), 
+          p.psf + theme(legend.position="none"))
+p.deoxynivalenol_vomitoxin
+
+```
+
+# Fig.S12
+```{r}
+# combine plots
+p <- plot_grid(p.energy,          p.fat,
+               p.carbohydrates,   p.ash,
+               p.starch,          p.water_content,
+               p.sugars,          p.sodium,
+               p.dietary_fibe,    p.iron,
+               p.protein,         p.deoxynivalenol_vomitoxin,
+               ncol = 2, align = "v", labels = c("A", "G", "B", "H", "C", "I",
+                                                 "D", "J", "E", "K", "F", "L"),
+               rel_heights =c(1.2, 1, 1, 1, 1, 1.1))
+p
+
+ggsave(here("Figures", "individual_figures", "Fig.S12.svg"), 
+       width = 38, height =  51, units = "cm")
+```
+
+
+# Version control
+```{r}
+sessionInfo()
+```
+

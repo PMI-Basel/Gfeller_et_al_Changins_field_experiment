@@ -1,0 +1,664 @@
+---
+title: "Experiment BX-feedback M18W19  <br> Wheat phenotyping"
+author: "Valentin Gfeller"
+date: "`r Sys.Date()`"
+output: 
+  html_document: 
+    toc: true
+    toc_float: true
+editor_options: 
+  chunk_output_type: console
+---
+
+
+```{r setup, include=FALSE}
+#global knitter option
+knitr::opts_chunk$set(
+	echo = FALSE,
+	fig.align = "center",
+	warning = FALSE,
+	dev = "svglite"
+)
+# load packages
+library(tidyverse); packageVersion("tidyverse")
+library(ggbeeswarm); packageVersion("ggbeeswarm")
+library(viridis); packageVersion("viridis")
+library(car); packageVersion("car")
+library(emmeans); packageVersion("emmeans")
+library(here); packageVersion("here")
+library(knitr); packageVersion("knitr")
+library(ggpubr); packageVersion("ggpubr")
+library(ggtext); packageVersion("ggtext")
+library(cowplot); packageVersion("cowplot")
+
+# source handy functions
+source(here("Functions", "fun_vg.R"))
+source(here("Functions", "fun_vg_more.R"))
+
+# set global option for ggplot2
+theme_set(theme_bw(base_size = 11))
+
+```
+
+```{r include=FALSE}
+#Load soil parameter PCAs
+d.soil_chem <- read.csv(here("Data", "01_Soil", "Exp_m18w19_PCA_soil_chem.csv"), 
+                        sep = ",", header = T) %>% 
+  select(length, width, starts_with("PCA"))
+
+str(d.soil_chem)
+sample_n(d.soil_chem, 5)
+
+```
+
+
+# Seedling emergence
+```{r include=FALSE}
+#Import data
+d.se <- read.csv(here("Data", "03_Wheat_phenotyping", 
+                      "Exp_m18w19_seedling_emergence.csv"),
+                 sep = ",", header = T)
+
+# append PCA of soil analysis
+d.se <- left_join(d.se, d.soil_chem, by =c("length", "width")) %>% 
+  mutate(trt = factor(trt, levels = c("W", "b")))
+
+# check data
+head(d.se)
+str(d.se)
+summary(d.se)
+```
+
+## Summarize Seed emenrgence
+Soil conditioning
+```{r}
+# lm
+m.se <-  lm(num_seedlings_m2 ~ trt * PCA_soil_chem_1, d.se)
+plot.mod.vg(m.se)
+
+# Tidy anova output
+lab.se <- Anova(m.se) %>% output_anova_phen()
+
+# Plot conditioning
+p.cond <- plot_box_wheat_feed(my_dat = d.se, var_measured = num_seedlings_m2,
+                    y_lab = expression(paste("Seedling emergence per m"^"2")),
+                    tab_anova = lab.se)
+
+# Plot soil chemistry
+p.soil <- plot_pc1_reg(my_dat = d.se, 
+             var_measured = num_seedlings_m2,
+             y_lab = expression(paste("Seedling emergence per m"^"2")))
+
+# Plot local feedback Local feedback
+d.new_LLR <- surrounding_lrr(variable = num_seedlings_m2, data = d.se)
+LRR <- d.new_LLR %>% select(contains("lrr")) %>% names() %>% sym()
+p.psf <- ggplot_lrr(data = d.new_LLR) + 
+  impr_graph_lrr(data = d.new_LLR) +
+  ylab("Local feedback on seedling emergence") +
+  scale_y_continuous(expand = expansion(mult = c(0.1, 0.2)))
+
+```
+
+```{r, fig.width=7, fig.height=5}
+p.emergence <- plot_comb(p.cond + theme(axis.title.x = element_blank()), 
+                         p.psf + theme(axis.title.x = element_blank()))
+p.emergence
+
+```
+
+
+# Vegetative wheat performance
+```{r include=FALSE}
+#Import data
+d.phe1 <- read.csv(here("Data", "03_wheat_phenotyping", "Exp_m18w19_phenotyping1.csv"),
+                   sep = ",", header = T)
+
+# append PCA of soil analysis
+d.phe1 <- left_join(d.phe1, d.soil_chem, by =c("length", "width")) %>% 
+  mutate(trt = factor(trt, levels = c("W", "b")))
+
+# Check data
+d.phe1 %>% str
+```
+
+## Chlorophyll 
+Soil conditioning
+```{r}
+# lm
+m.chlo <-  lm(SPAD ~ trt * PCA_soil_chem_1, d.phe1)
+plot.mod.vg(m.chlo)
+
+# Tidy anova output
+lab.chlo <- Anova(m.chlo) %>% output_anova_phen()
+
+# Plot conditioning
+p.cond <- plot_box_wheat_feed(my_dat = d.phe1, var_measured = SPAD,
+                    y_lab = expression(paste("Chlorophyll content (SPAD value)")),
+                    tab_anova = lab.chlo)
+
+# Plot soil chemistry
+p.soil <- plot_pc1_reg(my_dat = d.phe1, 
+             var_measured = SPAD,
+             y_lab = expression(paste("Chlorophyll content (SPAD value)")))
+
+# Plot local feedback Local feedback
+d.new_LLR <- surrounding_lrr(variable = SPAD, data = d.phe1)
+LRR <- d.new_LLR %>% select(contains("lrr")) %>% names() %>% sym()
+p.psf <- ggplot_lrr(data = d.new_LLR) + 
+  impr_graph_lrr(data = d.new_LLR) +
+  ylab("Local feedback on chlorophyll content") +
+  scale_y_continuous(expand = expansion(mult = c(0.1, 0.2)))
+
+```
+
+```{r, fig.width=7, fig.height=5}
+p.chloro <- plot_comb(p.cond + theme(legend.position="none", axis.title.x = element_blank()), 
+                      p.psf + theme(legend.position="none", axis.title.x = element_blank()))
+p.chloro
+
+```
+
+# #Fig.S1
+## Height 
+```{r}
+# lm
+m.height <-  lm(plant_height ~ trt * PCA_soil_chem_1, d.phe1)
+plot.mod.vg(m.height)
+
+# Tidy anova output
+lab.height <- Anova(m.height) %>% output_anova_phen()
+
+  
+# Plot conditioning
+p.cond <- plot_box_wheat_feed(my_dat = d.phe1, var_measured = plant_height,
+                    y_lab = expression(paste("Plant height (cm)")),
+                    tab_anova = lab.height) +
+#  geom_text(aes(label = plot_id)) +
+  theme(legend.position = "top", legend.key.height = unit(.3, "cm"),
+        legend.margin = margin(b =  0, unit='cm'),
+        legend.box.margin = margin(b = -10, unit = "pt"))
+p.cond
+ggsave(here("Figures", "individual_figures", "Fig.S1A.svg"),
+       width = 8, height = 14, units = "cm")
+
+# Plot soil chemistry
+p.soil <- plot_pc1_reg(my_dat = d.phe1, 
+             var_measured = plant_height,
+             y_lab = expression(paste("Plant height (cm)"))) + 
+  theme(legend.position = c(0.6, 0.11)) +
+  guides(color = guide_legend(direction = "horizontal"))
+
+p.soil
+ggsave(here("Figures", "individual_figures", "Fig.S1C.svg"),
+       width = 10, height = 10, units = "cm")
+
+# Plot local feedback Local feedback
+d.new_LLR <- surrounding_lrr(variable = plant_height, data = d.phe1)
+LRR <- d.new_LLR %>% select(contains("lrr")) %>% names() %>% sym()
+p.psf <- ggplot_lrr(data = d.new_LLR) + 
+  impr_graph_lrr(data = d.new_LLR) +
+  ylab("Local feedback on plant height") +
+  scale_y_continuous(expand = expansion(mult = c(0.1, 0.2)))
+
+p.psf + 
+  theme(legend.position = c(0.73, 0.13)) +
+  guides(color = guide_legend(direction = "horizontal"))
+
+ggsave(here("Figures", "individual_figures", "Fig.S1D.svg"),
+       width = 10, height = 10, units = "cm")
+```
+
+```{r, fig.width=7, fig.height=5}
+p.height <- plot_comb(p.cond + theme(legend.position="none"),
+                      p.psf + theme(legend.position="none"))
+p.height
+
+```
+
+```{r}
+d.new_LLR %>%
+   mutate(width = factor(width, levels = c("3", "2", "1")), 
+          length = factor(length)) %>% 
+  ggplot(aes(length, width, fill = plant_height)) +
+  geom_point(shape = 22, size = 20) +
+  scale_fill_viridis(discrete = FALSE, option = "D", direction = -1,
+                     name = "Plant height (cm)") +
+  geom_text(aes(label = plot_id),
+            hjust = 0.5, vjust = -2.75, show.legend = FALSE) +
+  xlab("Field position: length") +
+  ylab("Field position: width") +
+  theme(legend.position = "top", legend.justification = "left",
+        legend.key.height = unit(.3, "cm"),
+        legend.margin = margin(b =  0, unit='cm'),
+        legend.box.margin = margin(b = -10, unit = "pt"))
+
+ggsave(here("Figures", "individual_figures", "Fig.S1B.svg"), 
+       width = 14, height = 11, units = "cm")
+
+# Feedback
+d.new_LLR %>%
+   mutate(width = factor(width, levels = c("3", "2", "1")), 
+          length = factor(length)) %>% 
+  ggplot(aes(length, width, fill = lrr_plant_height)) +
+  geom_point(shape = 22, size = 20) +
+  scale_fill_viridis(discrete = FALSE, option = "D", direction = -1,
+                     name = "LRR plant height") +
+  geom_text(aes(label = plot_id),
+            hjust = 0.5, vjust = -2.75, show.legend = FALSE) +
+  xlab("Field position: length") +
+  ylab("Field position: width") +
+  theme(legend.position = "top", legend.justification = "left",
+        legend.key.height = unit(.3, "cm"),
+        legend.key.width = unit(0.8, 'cm'),
+        legend.margin = margin(b =  0, unit='cm'),
+        legend.box.margin = margin(b = -10, unit = "pt"))
+
+ggsave(here("Figures", "individual_figures", "Fig.S1E.svg"), 
+       width = 14, height = 11, units = "cm")
+```
+
+
+# Vegetative biomass
+```{r include=FALSE}
+#Import data
+d.bm1 <- read.csv(here("Data", "03_wheat_phenotyping", 
+                       "Exp_m18w19_phenotyping2.csv"), 
+                  sep = ",", header = T)
+
+# append PCA of soil analysis
+d.bm1 <- left_join(d.bm1, d.soil_chem, by =c("length", "width")) %>% 
+  mutate(trt = factor(trt, levels = c("W", "b")))
+
+# Check data
+str(d.bm1)
+summary(d.bm1)
+head(d.bm1)
+```
+
+## Dry weight
+Soil conditioning
+```{r warning=FALSE, include=FALSE}
+# lm
+m.dw <-  lm(dw_m2 ~ trt * PCA_soil_chem_1, d.bm1)
+plot.mod.vg(m.dw)
+
+t.emm <- emmeans(m.dw, specs = ~ trt) %>%  
+     summary(infer = TRUE) %>% tibble()
+dw.WT <- t.emm %>% filter(trt == "W") %>% pull(emmean)
+dw.bx1 <- t.emm %>% filter(trt == "b") %>% pull(emmean)
+
+#Yield loss
+1-(dw.WT/dw.bx1) # more than 8%
+dw.bx1/dw.WT # more than 8%
+
+# Tidy anova output
+lab.dw <- Anova(m.dw) %>% output_anova_phen()
+
+# Plot conditioning
+p.cond <- plot_box_wheat_feed(my_dat = d.bm1, var_measured = dw_m2,
+                    y_lab = expression(Biomass~(g/m^2)),
+                    tab_anova = lab.dw) +
+  scale_y_continuous(expand = expansion(mult = c(0.1, 0.15))) +
+  geom_label(aes(x = 1, y = 1050, label = "- 8%"), size = 5)
+
+# Plot soil chemistry
+p.soil <- plot_pc1_reg(my_dat = d.bm1, 
+             var_measured = dw_m2,
+             y_lab = expression(paste("Dry weight (g)")))
+
+# Plot local feedback Local feedback
+d.new_LLR <- surrounding_lrr(variable = dw_m2, data = d.bm1)
+LRR <- d.new_LLR %>% select(contains("lrr")) %>% names() %>% sym()
+p.psf <- ggplot_lrr(data = d.new_LLR) + 
+  impr_graph_lrr(data = d.new_LLR) +
+  ylab("Local feedback on biomass") +
+  scale_y_continuous(expand = expansion(mult = c(0.1, 0.2)))
+
+```
+
+```{r, fig.width=7, fig.height=5}
+p.dw <- plot_comb(p.cond + theme(axis.title.x = element_blank()), 
+                  p.psf + theme(axis.title.x = element_blank()))
+p.dw
+```
+
+
+# Larvae assay in lab
+```{r include=FALSE}
+#Import data
+d.lar <- read.csv(here("data", "03_wheat_phenotyping",
+                       "Exp_m18w19_larvae_assay_lab.csv"),
+                  sep = ",", header = T)
+
+# append PCA of soil analysis
+d.lar <- left_join(d.lar, d.soil_chem, by =c("length", "width")) %>% 
+  mutate(trt = factor(trt, levels = c("W", "b")))
+# Check data
+str(d.lar)
+summary(d.lar)
+head(d.lar)
+```
+
+```{r}
+# lm
+m.larv <-  lm(weight_gain_per_day ~ trt * PCA_soil_chem_1, d.lar)
+plot.mod.vg(m.larv)
+
+# Tidy anova output
+lab.larv <- Anova(m.larv) %>% output_anova_phen()
+
+# Plot conditioning
+p.cond <- plot_box_wheat_feed(my_dat = d.lar, var_measured = weight_gain_per_day,
+                    y_lab = expression(paste("Larvae weight gain per day (%)")),
+                    tab_anova = lab.larv)+
+  scale_y_continuous(expand = expansion(mult = c(0.1, 0.16)))
+
+# Plot soil chemistry
+p.soil <- plot_pc1_reg(my_dat = d.lar, 
+             var_measured = weight_gain_per_day,
+             y_lab = expression(paste("Larvae weight gain per day (%)")))+
+  scale_y_continuous(expand = expansion(mult = c(0.1, 0.2)))
+
+# Plot local feedback Local feedback
+d.new_LLR <- surrounding_lrr(variable = weight_gain_per_day, data = d.lar)
+LRR <- d.new_LLR %>% select(contains("lrr")) %>% names() %>% sym()
+p.psf <- ggplot_lrr(data = d.new_LLR) + 
+  impr_graph_lrr(data = d.new_LLR) +
+  ylab("Local feedback on larvae performance") +
+  scale_y_continuous(expand = expansion(mult = c(0.1, 0.2)))
+
+```
+
+combine plots
+```{r, fig.width=7, fig.height=5}
+p.spodo <- plot_comb(p.cond + theme(legend.position="none"),
+                     p.psf + theme(legend.position="none"))
+p.spodo
+```
+
+
+# Larvae infestation
+```{r include=FALSE}
+#Import data
+d.lar2 <- read.csv(here("data", "03_wheat_phenotyping",
+                        "Exp_m18w19_oulema_larvae.csv"), sep = ",", header = T)
+
+# append PCA of soil analysis
+d.lar2 <- left_join(d.lar2, d.soil_chem, by =c("length", "width")) %>% 
+  mutate(trt = factor(trt, levels = c("W", "b")))
+
+# Check data
+str(d.lar2)
+summary(d.lar2)
+head(d.lar2)
+```
+
+
+```{r}
+# lm
+m.larv2 <-  lm(oulema_per_til ~ trt * PCA_soil_chem_1, d.lar2)
+plot.mod.vg(m.larv2)
+
+# Tidy anova output
+lab.larv2 <- Anova(m.larv2) %>% output_anova_phen()
+
+# Plot conditioning
+p.cond <- plot_box_wheat_feed(my_dat = d.lar2, var_measured = oulema_per_til,
+                    y_lab = expression(paste("Oulema larvae per tiller")),
+                    tab_anova = lab.larv2)+
+  scale_y_continuous(expand = expansion(mult = c(0.1, 0.16)))
+
+# Plot soil chemistry
+p.soil <- plot_pc1_reg(my_dat = d.lar2, 
+             var_measured = oulema_per_til,
+             y_lab = expression(paste("Oulema larvae per tiller")))+
+  scale_y_continuous(expand = expansion(mult = c(0.1, 0.2)))
+
+# Plot local feedback Local feedback
+d.new_LLR <- d.lar2 %>% 
+  mutate(oulema_sum = oulema_sum+1) %>% # to get rid of zero counts messing up log calculation
+  surrounding_lrr(variable = oulema_sum, data = .)
+LRR <- d.new_LLR %>% select(contains("lrr")) %>% names() %>% sym()
+p.psf <- ggplot_lrr(data = d.new_LLR) + 
+  impr_graph_lrr(data = d.new_LLR) +
+  ylab("Local feedback on larvae infestation") +
+  scale_y_continuous(expand = expansion(mult = c(0.1, 0.2)))
+
+```
+
+combine plots
+```{r, fig.width=7, fig.height=5}
+p.oulema <- plot_comb(p.cond + theme(legend.position="none", axis.title.x = element_blank()),
+                      p.psf + theme(legend.position="none", axis.title.x = element_blank()))
+p.oulema
+```
+
+# #Fig.6
+# Combine Vegetative plots
+```{r}
+theme_set(theme_bw(base_size = 11))
+
+# combine plots
+p <- plot_grid(p.emergence, p.dw,
+               p.chloro, p.oulema,
+               p.height, p.spodo,
+               ncol = 2, align = "v", labels = c("A", "D", "B", "E", "C" ,"F"),
+               rel_heights = c(1.2, 1, 1.1))
+p
+
+ggsave(here("Figures", "individual_figures", "Fig.6.svg"), 
+       width = 38, height =  30, units = "cm")
+```
+
+# Harvest biomass 
+```{r include=FALSE}
+#Import data
+d.bm2 <- read.csv(here("data", "03_wheat_phenotyping",
+                       "Exp_m18w19_phenotyping3.csv"),
+                  sep = ",", header = T)
+
+# append PCA of soil analysis
+d.bm2 <- left_join(d.bm2, d.soil_chem, by =c("length", "width")) %>%  
+  mutate(trt = factor(trt, levels = c("W", "b")))
+  
+# Check data
+d.bm2 %>% str()
+d.bm2 %>% summary()
+```
+
+
+## Dry weight
+```{r}
+# lm
+m.bm_har <-  lm(mean_totBM_g_m2 ~ trt * PCA_soil_chem_1, d.bm2)
+plot.mod.vg(m.bm_har)
+
+# Tidy anova output
+lab.bm_har <- Anova(m.bm_har) %>% output_anova_phen()
+
+# Plot conditioning
+p.cond <- plot_box_wheat_feed(my_dat = d.bm2, var_measured = mean_totBM_g_m2,
+                    y_lab = expression(paste("Biomass (g/m"^"2", ")")),
+                    tab_anova = lab.bm_har)+
+  scale_y_continuous(expand = expansion(mult = c(0.1, 0.16)))
+
+# Plot soil chemistry
+p.soil <- plot_pc1_reg(my_dat = d.bm2, 
+             var_measured = mean_totBM_g_m2,
+             y_lab = expression(paste("Biomass (g/m"^"2", ")")))+
+  scale_y_continuous(expand = expansion(mult = c(0.1, 0.2)))
+
+# Plot local feedback Local feedback
+d.new_LLR <- surrounding_lrr(variable = mean_totBM_g_m2, data = d.bm2)
+LRR <- d.new_LLR %>% select(contains("lrr")) %>% names() %>% sym()
+p.psf <- ggplot_lrr(data = d.new_LLR) + 
+  impr_graph_lrr(data = d.new_LLR) +
+  ylab("Local feedback on biomass") +
+  scale_y_continuous(expand = expansion(mult = c(0.1, 0.2)))
+
+```
+
+combine plots
+```{r, fig.width=7, fig.height=5}
+p.bm_har <- plot_comb(p.cond + theme(axis.title.x = element_blank()),
+                      p.psf + theme(axis.title.x = element_blank()))
+
+p.bm_har
+```
+
+## Dry weight per tiller
+```{r}
+# lm
+m.weight_head <-  lm(weight_per_head ~ trt * PCA_soil_chem_1, d.bm2)
+plot.mod.vg(m.weight_head)
+
+# Tidy anova output
+lab.weight_head <- Anova(m.weight_head) %>% output_anova_phen()
+
+# Plot conditioning
+p.cond <- plot_box_wheat_feed(my_dat = d.bm2, var_measured = weight_per_head,
+                    y_lab = expression(paste("Tiller weight (g)")),
+                    tab_anova = lab.weight_head)+
+  scale_y_continuous(expand = expansion(mult = c(0.1, 0.16)))
+
+# Plot soil chemistry
+p.soil <- plot_pc1_reg(my_dat = d.bm2, 
+             var_measured = weight_per_head,
+             y_lab = expression(paste("Tiller weight (g)")))+
+  scale_y_continuous(expand = expansion(mult = c(0.1, 0.2)))
+
+# Plot local feedback Local feedback
+d.new_LLR <- surrounding_lrr(variable = weight_per_head, data = d.bm2)
+LRR <- d.new_LLR %>% select(contains("lrr")) %>% names() %>% sym()
+p.psf <- ggplot_lrr(data = d.new_LLR) + 
+  impr_graph_lrr(data = d.new_LLR) +
+  ylab("Local feedback on tiller weight") +
+  scale_y_continuous(expand = expansion(mult = c(0.1, 0.2)))
+
+```
+
+combine plots
+```{r, fig.width=7, fig.height=5}
+p.head_weight <- plot_comb(p.cond + theme(legend.position="none"), 
+                           p.psf + theme(legend.position="none"))
+
+p.head_weight
+```
+
+# Harvest
+```{r, include=FALSE}
+#Import data
+d.har <- read_delim(file = here("Data", "03_Wheat_phenotyping",
+                                "Exp_m18w19_harvest_phenotyping.csv"),
+                        delim = ",", col_names = TRUE)
+
+# append PCA of soil analysis
+d.har <- left_join(d.har, d.soil_chem, by =c("length", "width")) %>%  
+  mutate(trt = factor(trt, levels = c("W", "b")))
+  
+# Check data
+d.har %>% str()
+d.har %>% summary()
+d.har %>% head()
+```
+
+
+## Reproductive tillers
+```{r include=FALSE}
+# lm
+m.rep_til <-  lm(rep_till_per_sq_m ~ trt * PCA_soil_chem_1, d.har)
+plot.mod.vg(m.rep_til)
+
+# Tidy anova output
+lab.rep_til <- Anova(m.rep_til) %>% output_anova_phen()
+
+# Plot conditioning
+p.cond <- plot_box_wheat_feed(my_dat = d.har, var_measured = rep_till_per_sq_m,
+                    y_lab = expression(paste("Density reproductive tillers (til./m"^"2", ")")),
+                    tab_anova = lab.rep_til)+
+  scale_y_continuous(expand = expansion(mult = c(0.1, 0.16)))
+
+# Plot soil chemistry
+p.soil <- plot_pc1_reg(my_dat = d.har, 
+             var_measured = rep_till_per_sq_m,
+             y_lab = expression(paste("Density reproductive tillers (til./m"^"2", ")")))+
+  scale_y_continuous(expand = expansion(mult = c(0.1, 0.2)))
+
+# Plot local feedback Local feedback
+d.new_LLR <- surrounding_lrr(variable = rep_till_per_sq_m, data = d.har)
+LRR <- d.new_LLR %>% select(contains("lrr")) %>% names() %>% sym()
+p.psf <- ggplot_lrr(data = d.new_LLR) + 
+  impr_graph_lrr(data = d.new_LLR) +
+  ylab("Local feedback on tiller density") +
+  scale_y_continuous(expand = expansion(mult = c(0.1, 0.2)))
+
+```
+
+combine plots
+```{r, fig.width=7, fig.height=5}
+p.rep_til_dens <-  plot_comb(p.cond + theme(axis.title.x = element_blank()),
+                             p.psf + theme(axis.title.x = element_blank()))
+p.rep_til_dens
+```
+
+
+## Yield
+```{r}
+# lm
+m.yield <-  lm(total_weight_kernels_m2 ~ trt * PCA_soil_chem_1, d.har)
+plot.mod.vg(m.yield)
+
+# Tidy anova output
+lab.yield <- Anova(m.yield) %>% output_anova_phen()
+
+# Plot conditioning
+p.cond <- plot_box_wheat_feed(my_dat = d.har, var_measured = total_weight_kernels_m2,
+                    y_lab = expression(paste("Yield (g/m"^"2", ")")),
+                    tab_anova = lab.yield)+
+  scale_y_continuous(expand = expansion(mult = c(0.1, 0.16)))
+
+# Plot soil chemistry
+p.soil <- plot_pc1_reg(my_dat = d.har, 
+             var_measured = total_weight_kernels_m2,
+             y_lab = expression(paste("Yield (g/m"^"2", ")")))+
+  scale_y_continuous(expand = expansion(mult = c(0.1, 0.2)))
+
+# Plot local feedback Local feedback
+d.new_LLR <- surrounding_lrr(variable = total_weight_kernels_m2, data = d.har)
+LRR <- d.new_LLR %>% select(contains("lrr")) %>% names() %>% sym()
+p.psf <- ggplot_lrr(data = d.new_LLR) + 
+  impr_graph_lrr(data = d.new_LLR) +
+  ylab("Local feedback on yield") +
+  scale_y_continuous(expand = expansion(mult = c(0.1, 0.2)))
+
+```
+
+combine plots
+```{r, fig.width=7, fig.height=5}
+p.yield <- plot_comb(p.cond + theme(legend.position="none"), 
+          p.psf + theme(legend.position="none"))
+p.yield
+```
+
+# #Fig.7
+# Combine generative plots
+```{r}
+# combine plots
+p <- plot_grid(p.bm_har, p.rep_til_dens,
+               p.head_weight, p.yield,
+               ncol = 2, align = "v", labels = c("A", "C", "B", "D"),
+               rel_heights = c(1.05, 1))
+p
+
+ggsave(here("Figures", "individual_figures", "Fig.7.svg"), 
+       width = 38, height =  20, units = "cm")
+```
+
+
+
+# Version control
+```{r}
+sessionInfo()
+
+```
+
